@@ -127,7 +127,7 @@ function products_for_business($businessID, $consumer_id)
             $category_name = $row["category_name"];
         }
         $product_id = $row["product_id"];
-        $option_query = "select name, price, description from product_option where product_id = $product_id and availability_status = 1;";
+        $option_query = "select option_id, name, price, description from product_option where product_id = $product_id and availability_status = 1;";
 //            $option_result = $conn->query($option_query);
         $option_result = $conn->query($option_query);
         $option_resultArr["options"] = array();
