@@ -137,7 +137,13 @@ function products_for_business($businessID, $consumer_id)
         $row["options"] = $option_resultArr["options"];
         $resultArr[$category_name][] = $row;
     }
-    $resultArr["favorites"] = $favorite;
+    if (empty($favorite)) {
+        $emptyArr = array();
+        $resultArr["favorites"] = $emptyArr;
+    } else {
+        $resultArr["favorites"] = $favorite;
+    }
+    // $resultArr["favorites"] = $favorite;
 
     return $resultArr;
 }
@@ -164,10 +170,10 @@ function save_order($business_id, $customer_id, $total, $orderData) {
 }
 
 function save_points_for_customer_in_business($businessID, $consumerID, $orderID, $points, $pointReason) {
-    $insert_query = "INSERT INTO points ('customer_id', 'business_id','points_reason_id', 'points', 'order_id' )
-      VALUES ($consumerID, $businessID, 1, $points, $orderID);";
+    $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, time_earned )
+      VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
     getDBresult($insert_query);
-    return 12;
+    return 1;
 }
 
 function get_all_points_for_customer($businessID, $consumerID) {
@@ -268,7 +274,9 @@ do {
         $cmd_post = $request["cmd"];
         $pos = stripos($cmd_post, "save_order");
         if ($pos !== false) {
-            $return_result = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"]);
+            $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"]);
+            $points = round($request["total"],0,PHP_ROUND_HALF_UP);
+            $return_result = save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $points, 1);
             $final_result["message"] = "order is saved";
             $final_result["status"] = 1;
             $final_result["data"] = $return_result;
