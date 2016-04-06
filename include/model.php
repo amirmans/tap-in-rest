@@ -119,9 +119,12 @@ function products_for_business($businessID, $consumer_id)
         if (!empty($row["pictures"])) {
             $row["pictures"] = removeslashes($row["pictures"]);
         }
-        if (!empty($row["ti_rating"]) && $row["ti_rating"]> 4.5) {
-            $favorite[] = $row;
+        if (empty($row["ti_rating"]) || (strcasecmp($row["ti_rating"], "Null") == 0) ) {
+            $row["ti_rating"] = 0.0;
         }
+        // if (!empty($row["ti_rating"]) && $row["ti_rating"]> 4.5) {
+        //     $favorite[] = $row;
+        // }
 
         if ($row["category_name"] <> $category_name) {
             $category_name = $row["category_name"];
@@ -137,12 +140,12 @@ function products_for_business($businessID, $consumer_id)
         $row["options"] = $option_resultArr["options"];
         $resultArr[$category_name][] = $row;
     }
-    if (empty($favorite)) {
-        $emptyArr = array();
-        $resultArr["favorites"] = $emptyArr;
-    } else {
-        $resultArr["favorites"] = $favorite;
-    }
+    // if (empty($favorite)) {
+    //     $emptyArr = array();
+    //     $resultArr["favorites"] = $emptyArr;
+    // } else {
+    //     $resultArr["favorites"] = $favorite;
+    // }
     // $resultArr["favorites"] = $favorite;
 
     return $resultArr;
