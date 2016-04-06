@@ -151,6 +151,15 @@ function products_for_business($businessID, $consumer_id)
     return $resultArr;
 }
 
+
+function previous_order($business_id, $consumer_id) {
+    $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
+      where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
+
+    return (getDBresult($query));
+}
+
+
 function save_order($business_id, $customer_id, $total, $orderData) {
   $conn = getDBConnection();
   $insert_query = "insert into `order` (business_id, consumer_id, total, status, date)
@@ -160,11 +169,11 @@ function save_order($business_id, $customer_id, $total, $orderData) {
     $order_id = mysqli_insert_id($conn);
 
 
-    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, price, quantity) VALUES (?,?,?,?)";
+    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity) VALUES (?,?,?,?,?)";
      foreach ($orderData as $orderRow) {
          $option_ids_fld = json_decode ($orderRow["options"]);
          $prepared_query = $conn->prepare($prepared_stmt);
-         $rc = $prepared_query->bind_param('ssdi', $order_id, $orderRow["product_id"],
+         $rc = $prepared_query->bind_param('sssdi', $order_id, $orderRow["product_id"],$option_ids_fld,
                 $orderRow["price"], $orderRow["quantity"]);
          $rc = $prepared_query->execute();
      }
@@ -282,12 +291,26 @@ do {
             $return_result = save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $points, 1);
             $final_result["message"] = "order is saved";
             $final_result["status"] = 1;
-            $final_result["data"] = $return_result;
+            $final_result["data"]["order_id"] = $order_id;
+            $final_result["data"]["points"] = $points;
             echo json_encode($final_result);
 
             break 2;
         }
         case 2:
+            $pos = stripos($cmd, "previous_order");
+            if ($pos !== false) {
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+                $return_result = previous_order($business_id, $consumer_id);
+                $final_result["message"] = "order is retrieved";
+                $final_result["status"] = 1;
+                $final_result["data"] = $return_result;
+                echo json_encode($final_result);
+
+                break 2;
+            }
+        case 3:
             $pos = stripos($cmd, "save_points");
             if ($pos !== false) {
                 $businessID = filter_input(INPUT_GET, 'businessID');
@@ -307,7 +330,7 @@ do {
 
                 break 2;
             }
-            case 3:
+            case 4:
                 $pos = stripos($cmd, "get_all_points");
                 if ($pos !== false) {
                     $businessID = filter_input(INPUT_GET, 'businessID');
@@ -330,5 +353,5 @@ do {
     } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 36) ;
+} while ($cmdCounter < 5) ;
 ?>
