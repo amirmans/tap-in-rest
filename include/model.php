@@ -172,6 +172,7 @@ function save_order($business_id, $customer_id, $total, $orderData) {
     $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity) VALUES (?,?,?,?,?)";
      foreach ($orderData as $orderRow) {
          $option_ids_fld = json_decode ($orderRow["options"]);
+         $option_ids_fld = implode (', ',$orderRow["options"]);
          $prepared_query = $conn->prepare($prepared_stmt);
          $rc = $prepared_query->bind_param('sssdi', $order_id, $orderRow["product_id"],$option_ids_fld,
                 $orderRow["price"], $orderRow["quantity"]);
@@ -182,7 +183,14 @@ function save_order($business_id, $customer_id, $total, $orderData) {
 }
 
 function save_points_for_customer_in_business($businessID, $consumerID, $orderID, $points, $pointReason) {
-    $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, time_earned )
+    if ($points < 0)
+    {
+        $time_field_name = "time_redeemed";
+    }
+    else {
+        $time_field_name = "time_earned";
+    }
+    $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
       VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
     getDBresult($insert_query);
     return 1;
@@ -217,11 +225,35 @@ function get_all_points_for_customer($businessID, $consumerID) {
           $total_redeemed_points -= $row["points"];
         }
     }
+    $total_available = $total_earned_points - $total_redeemed_points;
     $return_result["total_earned_points"] = $total_earned_points;
     $return_result["total_redeemed_points"] = $total_redeemed_points;
-    $return_result["total_available_points"] = $total_earned_points - $total_redeemed_points;
+    $return_result["total_available_points"] = $total_available;
     $return_result["points_earned"] =  $points_earned;
     $return_result["points_redeemed"] =  $points_redeemed;
+
+    $next_level_query= " SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+      , message FROM points_map main RIGHT JOIN
+      (SELECT MIN(points) as next_level FROM points_map WHERE  $total_available < points ) as sub
+      on sub.next_level = main.points";
+    $current_level_query = "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+      , message FROM points_map main RIGHT JOIN
+      (SELECT MAX(points) as next_level FROM points_map WHERE  $total_available >= points ) as sub on sub.next_level = main.points";
+
+    if ($businessID  && $businessID <> "0") {
+        $next_level_query .= " and business_id = $businessID;";
+        $current_level_query .= " and business_id = $businessID;";
+    }
+    else {
+        $next_level_query .= ";";
+        $current_level_query .= ";";
+    }
+
+    $points_next_level = getDBresult($next_level_query);
+    $points_current_level = getDBresult($current_level_query);
+
+    $return_result["current_points_level"] = $points_current_level[0];
+    $return_result["next_points_level"] = $points_next_level[0];
 
     return $return_result;
 }
@@ -287,12 +319,18 @@ do {
         $pos = stripos($cmd_post, "save_order");
         if ($pos !== false) {
             $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"]);
-            $points = round($request["total"],0,PHP_ROUND_HALF_UP);
-            $return_result = save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $points, 1);
-            $final_result["message"] = "order is saved";
+            $pointsToAdd = round($request["total"],0,PHP_ROUND_HALF_UP);
+            save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
+            if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
+                // making sure the points to redeem is always negative even if it is passed as a positive number
+                $pointsToRedeem = -1 * abs($request["points_redeemed"]);
+                save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToRedeem, 1);
+            }
+
+            $final_result["message"] = "";
             $final_result["status"] = 1;
             $final_result["data"]["order_id"] = $order_id;
-            $final_result["data"]["points"] = $points;
+            $final_result["data"]["points"] = $pointsToAdd;
             echo json_encode($final_result);
 
             break 2;
