@@ -257,6 +257,14 @@ function get_all_points_for_customer($businessID, $consumerID) {
 
     return $return_result;
 }
+/**
+ * This is for testing purposes and isn't using in the actual program
+ */
+function get_all_orders() {
+    $query = "select * from `order` order by order_id desc;";
+    return (getDBresult($query));
+}
+
 /********************************************************************************************************/
 /*   SIS Inv                                                                                            */
 /********************************************************************************************************/
@@ -386,6 +394,15 @@ do {
 
                     break 2;
                 }
+            case 5:
+                $pos = stripos($cmd, "get_all_orders");
+                if ($pos !== false) {
+                    $return_result = get_all_orders();
+                    echo json_encode($return_result);
+
+                    break 2;
+                }
+
         default:
             break 2;
     } // switch
