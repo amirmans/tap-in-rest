@@ -285,6 +285,15 @@ function get_all_points_for_customer($businessID, $consumerID) {
 
     return $return_result;
 }
+
+function ti_setRating($type, $id, $rating, $consumer_id) {
+
+  $query = "INSERT INTO rating (id, consumer_id, type, avg) VALUES($id, $consumer_id, $type, $rating) ON DUPLICATE KEY UPDATE
+              id = $id, consumer_id = $consumer_id, type = $type, avg = $rating;";
+
+  return (getDBresult($query));
+}
+
 /**
  * This is for testing purposes and isn't using in the actual program
  */
@@ -405,6 +414,21 @@ do {
                 break 2;
             }
             case 4:
+            $pos = stripos($cmd, "setRatings");
+            if ($pos !== false) {
+              $array = json_decode($_POST['songs']);
+
+                $id = filter_input(INPUT_GET, 'id');
+                $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+                $type = filter_input(INPUT_GET, 'type');
+                $rating = filter_input(INPUT_GET, 'rating');
+                $return_result = ti_setRating($type, $id, $rating, $consumer_id);
+                echo json_encode($return_result);
+
+                break 2;
+            }
+
+            case 5:
                 $pos = stripos($cmd, "get_all_points");
                 if ($pos !== false) {
                     $businessID = filter_input(INPUT_GET, 'businessID');
@@ -422,7 +446,7 @@ do {
 
                     break 2;
                 }
-            case 5:
+            case 6:
                 $pos = stripos($cmd, "get_all_orders");
                 if ($pos !== false) {
                     $return_result = get_all_orders();
