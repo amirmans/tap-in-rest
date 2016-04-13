@@ -153,10 +153,38 @@ function products_for_business($businessID, $consumer_id)
 
 
 function previous_order($business_id, $consumer_id) {
-    $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
-      where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
+    // $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
+    //   where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
+    $query = "select i.*, p.name as product_name, p.short_description as product_short_description from order_item i
+      inner join (select max(order_id) order_id from `order`
+      where business_id = $business_id and consumer_id = $consumer_id) t on t.order_id = i.order_id
+      left join product p on p.product_id = i.product_id";
 
-    return (getDBresult($query));
+//      $result = getDBresult($query);
+    $conn = connectToDB();
+    $conn->set_charset("utf8");
+    $result = $conn->query($query);
+    $resultWithOptions = array();
+      while ($resultRow = mysqli_fetch_assoc($result)) {
+        $resultRow["options"] = array();
+        $options_csv = $resultRow["option_ids"];
+        if (empty($options_csv)) {
+           $resultWithOptions[] = $resultRow;
+        } else {
+          $optionArray = explode(',', $options_csv);
+            $options = array();
+          foreach ($optionArray as $option) {
+            $optionQuery = "select option_id, name, price from product_option where option_id = $option";
+            $db_options = $conn->query($optionQuery);
+            while ($option_row = mysqli_fetch_assoc($db_options)) {
+                $options["options"][] = $option_row;
+            }
+          }
+            $resultRow["options"] =  $options["options"];
+            $resultWithOptions[] = $resultRow;
+        }
+      }
+    return ($resultWithOptions);
 }
 
 
