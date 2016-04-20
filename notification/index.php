@@ -90,7 +90,7 @@
     <img src="./bgimage.jpg" class="masthead">
     <div class="container">
         <h1>Notify customers!</h1>
-        <h6>Type the nickname, the message, choose your icon and submit</h6>
+        <h6>Type the nickname, the message, choose type of notification, choose your icon and submit</h6>
         <p><br></p>
         <form name = "form" role="form" method="post" action="<?php echo htmlspecialchars("notification_backend.php");?>" target="_blank">
             <div>
@@ -117,6 +117,17 @@
                 <option>abc_jewelry_logo.png</option>
                 <option>TopPotDoughnuts.png</option>
                 <option>Pubic_TapForAll_Chat.jpg</option>
+            </select>
+            <label>
+                <h4>Type:</h4>
+            </label>
+            <select name="type" id="formInput43">
+                <option>Standard</option>
+                <option>Location update</option>
+                <option>Menu update</option>
+                <option>Prepay not available</option>
+                <option>Prepay available</option>
+                <option>Temporary closed</option>
             </select>
             <h4>Message:</h4>
             <textarea name="notificationMessage" rows="3" required class="message"></textarea>

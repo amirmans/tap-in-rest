@@ -9,7 +9,7 @@ ini_set('display_errors',1);
 
 include '../include/dbmanager.inc';
 
-function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageName, $dateTimeSent)
+function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageName, $typeName, $dateTimeSent)
 {
 //     $apnsHost = 'gateway.sandbox.push.apple.com';
     //$apnsHost = 'gateway.push.apple.com';
@@ -17,12 +17,13 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
     $apnsPort = 2195;
     //$apnsFeedbackHost = 'feedback.sandbox.push.apple.com';
     //$apnsFeedbackPort = 2196;
-    $apnsCert = 'amir_ck.pem';
-//     $apnsCert = 'TapForAll_dev.pem';
-    //$apnsCert = 'TapForAll_Production.pem';
+    $apnsCert = 'tapin_dev.pem';
 
     // device token is an associative Array
     try {
+        $notificationTypeArr = getAllFieldsWithName("notification_type", 'notification_type_id', " notification_type_name= \"$typeName\"");
+        $notificationType = $notificationTypeArr[0]['notification_type_id'];
+
         $deviceTokens = getAllFieldsWithName("consumer_profile", 'device_token', " nickName = \"$nickName\"");
         $deviceToken = $deviceTokens[0]['device_token'];
         if (strlen($deviceToken) <> 64)
@@ -60,14 +61,12 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
     $body['aps'] = array(
             'content-available' => 1,
             'alert'  => $message,
-            // 'msg '   => $message,
             'sender' => $sender,
-            'bizID'  => $businessID,
-            // 'business_id'  => $businessID,
+             'business_id'  => $businessID,
             'imageName' => $imageName,
             'timeSent' => $dateTimeSent,
             'status' => 1,
-            'notification_type ' => 1,
+            'notification_type ' => $notificationType,
             "badge" => 1
             );
 
@@ -105,6 +104,7 @@ $message = filter_input(INPUT_POST, 'notificationMessage');
 $sender = filter_input(INPUT_POST, 'sender');
 $businessID = intval(filter_input(INPUT_POST, 'businessID'));
 $imageName = filter_input(INPUT_POST, 'imageName');
+$typeName = filter_input(INPUT_POST, 'type');
 $dateTimeSent = date('Y-m-d H:i:s');
-APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageName, $dateTimeSent);
+APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageName, $typeName, $dateTimeSent);
 
