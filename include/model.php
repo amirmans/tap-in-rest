@@ -94,15 +94,18 @@
              $category_name = $row["category_name"];
          }
          $product_id = $row["product_id"];
-         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id and availability_status = 1;";
- //            $option_result = $conn->query($option_query);
-         $option_result = $conn->query($option_query);
-         $option_resultArr["options"] = array();
-         while ($option_row = mysqli_fetch_assoc($option_result)) {
-             $option_resultArr["options"][] = $option_row;
-         }
-         $row["options"] = $option_resultArr["options"];
+         $optionWithCategories =  get_options_for_products($product_id);
+ //         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id and availability_status = 1;";
+ // //            $option_result = $conn->query($option_query);
+ //         $option_result = $conn->query($option_query);
+ //         $option_resultArr["options"] = array();
+ //         while ($option_row = mysqli_fetch_assoc($option_result)) {
+ //             $option_resultArr["options"][] = $option_row;
+ //         }
+         // $row["options"] = $option_resultArr["options"];
+         $row["options"] = $optionWithCategories;
          $resultArr[$category_name][] = $row;
+
      }
 
      return $resultArr;
@@ -283,12 +286,12 @@
       $index++;
     }
 
-    $result["status"] = 1;
-    $result["message"] = "";
-    $result["product_id"] = $product_id;
-    $result["data"] = $resultArr;
+    // $result["status"] = 1;
+    // $result["message"] = "";
+    // $result["product_id"] = $product_id;
+    // $result["data"] = $resultArr;
 
-    return ($result);
+    return ($resultArr);
   }
 
   /********************************************************************************************************/
@@ -448,7 +451,14 @@
                   if ($pos !== false) {
                       $product_id = filter_input(INPUT_GET, 'product_id');
                       $return_result = get_options_for_products($product_id);
-                      echo json_encode($return_result);
+
+                      $final_result["status"] = 1;
+                      $final_result["message"] = "";
+                      $final_result["product_id"] = $product_id;
+                      $final_result["data"] = $return_result;
+
+
+                      echo json_encode($final_result);
 
                       break 2;
                   }
