@@ -201,23 +201,26 @@
       $total_redeemed_points = 0;
       $total_earned_points = 0;
       $total_available_points = 0;
-      $points_earned = array();
-      $points_redeemed = array();
+      // $points_earned = array();
+      // $points_redeemed = array();
+      $points = array();
       foreach ($result as $row) {
           if ($row["points"]  > 0) {
-            $points_earned[] = $row;
+            // $points_earned[] = $row;
             $total_earned_points += $row["points"];
           } else {
-            $points_redeemed[] = $row;
+            // $points_redeemed[] = $row;
             $total_redeemed_points -= $row["points"];
           }
+          $points[] = $row;
       }
       $total_available = $total_earned_points - $total_redeemed_points;
       $return_result["total_earned_points"] = $total_earned_points;
       $return_result["total_redeemed_points"] = $total_redeemed_points;
       $return_result["total_available_points"] = $total_available;
-      $return_result["points_earned"] =  $points_earned;
-      $return_result["points_redeemed"] =  $points_redeemed;
+      // $return_result["points_earned"] =  $points_earned;
+      // $return_result["points_redeemed"] =  $points_redeemed;
+      $return_result["points"] =  $points;
 
       $next_level_query= " SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
         , message FROM points_map main RIGHT JOIN
