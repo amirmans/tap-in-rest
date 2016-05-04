@@ -115,10 +115,11 @@
   function previous_order($business_id, $consumer_id) {
       // $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
       //   where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
-      $query = "select i.*, p.name as product_name, p.short_description as product_short_description from order_item i
+      $query = "select i.*, p.name as product_name, p.short_description as product_short_description, COALESCE(q.avg, 0) as ti_rating from order_item i
         inner join (select max(order_id) order_id from `order`
         where business_id = $business_id and consumer_id = $consumer_id) t on t.order_id = i.order_id
-        left join product p on p.product_id = i.product_id";
+        left join product p on p.product_id = i.product_id
+        left join (select avg, id  from rating where consumer_id = $consumer_id) as q on q.id = i.product_id;";
 
   //      $result = getDBresult($query);
       $conn = connectToDB();
@@ -184,17 +185,21 @@
   }
 
   function get_all_points_for_customer($businessID, $consumerID) {
-    $query = "select consumer_id, business_id, points_reason_id, points, order_id, time_earned,time_redeemed
+    $query = "select consumer_id, business_id, points_reason_id, points, order_id, time_earned,time_redeemed,
+      case `points`.`time_earned`
+        when '0000-00-00 00:00:00'    then `points`.`time_redeemed`
+        when 'NULL' then `points`.`time_redeemed`
+        ELSE  `points`.`time_earned`
+        end as activity_time
       from points where
       (ISNULL(time_expired) = 1 or time_expired > now())
-      and consumer_id = $consumerID";
+      and consumer_id = '$consumerID'";
 
       if ($businessID  && $businessID <> "0") {
-       $query .= " and business_id = $businessID;";
+       $query .= " and business_id = $businessID";
      }
-    else {
-      $query .= ";";
-    }
+
+      $query .= " order by (activity_time) DESC limit 50;";
 
       $result = getDBresult($query);
 
