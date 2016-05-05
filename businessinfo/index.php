@@ -10,7 +10,10 @@ while (($counter++ <= 2) and ($done == FALSE)) {
     switch ($counter) {
         case 1:
         $passedArg = $_GET["businessID"];
-            $consumer_id = $_GET["consumer_id"];
+        $consumer_id = $_GET["consumer_id"];
+        if (!$consumer_id) {
+            $consumer_id = $_GET["consumerID"];
+        }
 
         if ($passedArg != "") {
             $done = TRUE;
