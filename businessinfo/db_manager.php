@@ -68,8 +68,8 @@ function products_for_business($businessID, $consumer_id) {
     if (empty($consumer_id)) {
         $consumer_id = -1;
     }
-  $dbh = connect();
-   $product_query = "SELECT distinct product_id, category_name, s.businessID, s.SKU, s.name, s.product_category_id
+    $dbh = connect();
+    $product_query = "SELECT distinct product_id, category_name, s.businessID, s.SKU, s.name, s.product_category_id
        ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
        ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
        ,s.has_option, s.bought_with_rewards, s.more_information
@@ -81,7 +81,6 @@ function products_for_business($businessID, $consumer_id) {
            FROM product p, product_category c, product_option o
        WHERE p.businessID = $businessID and p.availability_status = 1 AND p.product_category_id = c.product_category_id) as s
    left join (select id, avg, consumer_id from rating where type = 2 and consumer_id = $consumer_id) as q on q.id = s.product_id;";
-
 
   $product_result = mysql_query($product_query) or die("Error: " . mysql_error());
         // $product_result = $conn->query($product_query);
@@ -138,11 +137,24 @@ function sendListOfAllBusinesses($consumer_id, $tableName = null) {
   $dbh = connect();
   if ($tableName == null)
     $tableName = 'businessCustomers';
-  $select_statement = "select distinct a.*, b.opening_time, b.closing_time
-  from businessCustomers a left join  opening_hours b
-  on (b.businessID = a.businessID) and b.weekday_id = WEEKDAY(now()) where a.active = 1;";
-  $query = mysql_query($select_statement) or die("Error: " . mysql_error());
+  // $select_statement = "select distinct a.*, b.opening_time, b.closing_time
+  // from businessCustomers a left join  opening_hours b
+  // on (b.businessID = a.businessID) and b.weekday_id = WEEKDAY(now()) where a.active = 1;";
 
+  if ($consumer_id) {
+    $select_statement = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
+      as ti_rating from businessCustomers a
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+      left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r
+      on r.id = a.businessID  where a.active = 1;";
+  } else {
+    // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
+    $select_statement = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from businessCustomers a
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+      left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID where a.active = 1;";
+  }
+
+  $query = mysql_query($select_statement) or die("Error: " . mysql_error());
   if (mysql_num_rows ($query) > 0) {
     $returnVal =  True;
 
