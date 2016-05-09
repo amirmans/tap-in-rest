@@ -111,6 +111,26 @@
      return $resultArr;
   }
 
+  function save_cc_info($request) {
+    $conn = getDBConnection();
+    $consumer_id = $request["consumer_id"];
+    $name_on_card = $request["name_on_card"];
+    if (!$name_on_card) {
+      $name_on_card = "";
+    }
+    $prepared_stmt = "INSERT INTO consumer_cc_info
+      (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code)
+      VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+      name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?;";
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc = $prepared_query->bind_param('sssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
+      ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $name_on_card, $request["cc_no"]
+      , $request["expiration_date"], $request["cvv"], $request["zip_code"]);
+    $rc = $prepared_query->execute();
+
+    return 0;
+  }
+
 
   function previous_order($business_id, $consumer_id) {
       // $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
@@ -381,6 +401,19 @@
               break 2;
           }
           case 2:
+          $request = json_decode(file_get_contents('php://input'), TRUE);
+          $cmd_post = $request["cmd"];
+          $pos = stripos($cmd_post, "save_cc_info");
+          if ($pos !== false) {
+              $status = save_cc_info($request);
+
+              $final_result["message"] = "Success";
+              $final_result["status"] = $status;
+              echo json_encode($final_result);
+
+              break 2;
+          }
+          case 3:
               $pos = stripos($cmd, "previous_order");
               if ($pos !== false) {
                   $business_id = filter_input(INPUT_GET, 'business_id');
@@ -393,7 +426,7 @@
 
                   break 2;
               }
-          case 3:
+          case 4:
               $pos = stripos($cmd, "save_points");
               if ($pos !== false) {
                   $businessID = filter_input(INPUT_GET, 'businessID');
@@ -413,11 +446,10 @@
 
                   break 2;
               }
-              case 4:
+          case 5:
               $pos = stripos($cmd, "setRatings");
               if ($pos !== false) {
                 $array = json_decode($_POST['songs']);
-
                   $id = filter_input(INPUT_GET, 'id');
                   $consumer_id = filter_input(INPUT_GET, 'consumer_id');
                   $type = filter_input(INPUT_GET, 'type');
@@ -428,7 +460,7 @@
                   break 2;
               }
 
-              case 5:
+            case 6:
                   $pos = stripos($cmd, "get_all_points");
                   if ($pos !== false) {
                       $businessID = filter_input(INPUT_GET, 'businessID');
@@ -446,7 +478,7 @@
 
                       break 2;
                   }
-              case 6:
+              case 7:
                   $pos = stripos($cmd, "get_all_orders");
                   if ($pos !== false) {
                       $return_result = get_all_orders();
@@ -454,7 +486,7 @@
 
                       break 2;
                   }
-              case 7:
+              case 8:
                   $pos = stripos($cmd, "get_options_for_products");
                   if ($pos !== false) {
                       $product_id = filter_input(INPUT_GET, 'product_id');
@@ -476,5 +508,5 @@
       } // switch
 
       $cmdCounter++;
-  } while ($cmdCounter < 8) ;
+  } while ($cmdCounter < 9) ;
   ?>
