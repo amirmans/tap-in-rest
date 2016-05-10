@@ -6,8 +6,8 @@
   //$includePath = __ROOT__ . "../includes/";
   include_once(dirname(dirname(__FILE__)) . '/include/config_db.inc.php');
   include_once(dirname(dirname(__FILE__)) . '/utils/ti_functions.php');
-  include_once(dirname(dirname(__FILE__)) . '/include/consts.inc');
-  include_once(dirname(dirname(__FILE__)) . '/error_logging/error.php');
+  include_once(dirname(dirname(__FILE__)) . '/include/consts_server.inc');
+  include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 
   /*--------- database functions -----------------*/
   function connectToDB()
@@ -170,16 +170,23 @@
 
 
   function save_order($business_id, $customer_id, $total, $orderData) {
-    $conn = getDBConnection();
-    $insert_query = "insert into `order` (business_id, consumer_id, total, status, date)
-      Values ($business_id, $customer_id, $total, 1, now());";
+
+      $no_items_in_order = 0;
+      foreach ($orderData as $orderRow) {
+         $no_items_in_order += $orderRow["quantity"];
+      }
+
+      $conn = connectToDB();
+      $conn->set_charset("utf8");
+      $insert_query = "insert into `order` (business_id, consumer_id, total, status, no_items,  date)
+      Values ($business_id, $customer_id, $total, 1, $no_items_in_order, now());";
       $conn->query($insert_query);
 
       $order_id = mysqli_insert_id($conn);
 
       $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity) VALUES (?,?,?,?,?)";
        foreach ($orderData as $orderRow) {
-           $option_ids_fld = json_decode ($orderRow["options"]);
+//           $option_ids_fld = json_decode ($orderRow["options"]);
            $option_ids_fld = implode (', ',$orderRow["options"]);
            $prepared_query = $conn->prepare($prepared_stmt);
            $rc = $prepared_query->bind_param('sssdi', $order_id, $orderRow["product_id"],$option_ids_fld,
