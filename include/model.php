@@ -232,7 +232,7 @@
 
       $total_redeemed_points = 0;
       $total_earned_points = 0;
-      $total_available_points = 0;
+      //$total_available_points = 0;
       // $points_earned = array();
       // $points_redeemed = array();
       $points = array();
@@ -472,6 +472,8 @@
                   if ($pos !== false) {
                       $businessID = filter_input(INPUT_GET, 'businessID');
                       $consumerID = filter_input(INPUT_GET, 'consumerID');
+                      if (empty($consumerID))
+                          $consumerID = filter_input(INPUT_GET, 'customer_id');
 
                       $return_result = get_all_points_for_customer($businessID, $consumerID);
                       if (empty($return_result) ) {
