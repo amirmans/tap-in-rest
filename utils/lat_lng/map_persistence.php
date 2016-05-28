@@ -60,7 +60,7 @@ if (!$connection) {
 // Select all the rows in the markers table
 //$query = "SELECT * FROM markers WHERE 1";
 $query = "SELECT a.name, a.address, a.lat, a.lng, a.businessID, a.zipcode
-FROM businessCustomers a";
+FROM business_customers a";
 
 if ($search_zipcode != 0)
     $query = $query .  " and a.zip_code in ($search_zipcode)";
@@ -163,7 +163,7 @@ while ($row = $result->fetch_assoc()) {
 
         //insert the values in the database, for the next time
           $businessID = $row["businessID"];
-        $update_query = "Update businessCustomers  set lat = $lat, lng = $lng where businessID = $businessID";
+        $update_query = "Update business_customers  set lat = $lat, lng = $lng where businessID = $businessID";
         $update_result = $connection->query($update_query);
         if (!$update_result) {
              pt_error_log("Fetal - Database Error". $connection->connect_error);

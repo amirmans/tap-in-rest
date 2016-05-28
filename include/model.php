@@ -1,6 +1,6 @@
   <?php
   date_default_timezone_set('America/Los_Angeles');
-  $conn = nil;
+  static $conn = nil;
 
   //define('__ROOT__', dirname(dirname(dirname(__FILE__))));
   //$includePath = __ROOT__ . "../includes/";
@@ -169,8 +169,10 @@
   }
 
 
-  function save_order($business_id, $customer_id, $total, $orderData) {
-
+  function save_order($business_id, $customer_id, $total, $orderData, $note) {
+    if (empty($note)) {
+      $note = "";
+    }
       $no_items_in_order = 0;
       foreach ($orderData as $orderRow) {
          $no_items_in_order += $orderRow["quantity"];
@@ -178,8 +180,8 @@
 
       $conn = connectToDB();
       $conn->set_charset("utf8");
-      $insert_query = "insert into `order` (business_id, consumer_id, total, status, no_items,  date)
-      Values ($business_id, $customer_id, $total, 1, $no_items_in_order, now());";
+      $insert_query = "insert into `order` (business_id, consumer_id, total, status, no_items, note, date)
+      Values ($business_id, $customer_id, $total, 1, $no_items_in_order, $note, now());";
       $conn->query($insert_query);
 
       $order_id = mysqli_insert_id($conn);
@@ -193,7 +195,6 @@
                   $orderRow["price"], $orderRow["quantity"]);
            $rc = $prepared_query->execute();
        }
-
       return $order_id;
   }
 
@@ -390,7 +391,7 @@
           $cmd_post = $request["cmd"];
           $pos = stripos($cmd_post, "save_order");
           if ($pos !== false) {
-              $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"]);
+              $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"], $request["note"]);
               $pointsToAdd = round($request["total"],0,PHP_ROUND_HALF_UP);
               save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
               if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {

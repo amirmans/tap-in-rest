@@ -33,7 +33,7 @@ function connect() {
 
 function isThisBusinessCustomer($businessName) {
   $dbh = connect();
-  $query = mysql_query("SELECT * FROM businessCustomers WHERE name = '$businessName' and active = 1;") or die("Error: " . mysql_error());;
+  $query = mysql_query("SELECT * FROM business_customers WHERE name = '$businessName' and active = 1;") or die("Error: " . mysql_error());;
 
   if (mysql_num_rows ($query) > 0) {
     $returnVal =  TRUE;
@@ -136,20 +136,20 @@ function getBusinessProducts($businessID, $consumer_id) {
 function sendListOfAllBusinesses($consumer_id, $tableName = null) {
   $dbh = connect();
   if ($tableName == null)
-    $tableName = 'businessCustomers';
+    $tableName = 'business_customers';
   // $select_statement = "select distinct a.*, b.opening_time, b.closing_time
-  // from businessCustomers a left join  opening_hours b
+  // from business_customers a left join  opening_hours b
   // on (b.businessID = a.businessID) and b.weekday_id = WEEKDAY(now()) where a.active = 1;";
 
   if ($consumer_id) {
     $select_statement = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
-      as ti_rating from businessCustomers a
+      as ti_rating from business_customers a
       left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
       left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r
       on r.id = a.businessID  where a.active = 1;";
   } else {
     // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
-    $select_statement = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from businessCustomers a
+    $select_statement = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from business_customers a
       left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
       left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID where a.active = 1;";
   }

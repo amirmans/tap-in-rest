@@ -78,7 +78,8 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
     //   $msg = chr(0) . pack('n', 32) . pack('H*', $deviceToken) . pack('n', strlen($payload)) . $payload;
     $msg = chr(0) . chr(0) . chr(32) . pack('H*', str_replace(' ', '', $deviceToken)) . chr(0) . chr(strlen($payload))
             . $payload;
-    if (strlen($msg) > 256) {
+  $msgLength = strlen($msg);
+    if ($msgLength > 256) {
         echo 'Error - Too many charaters in your message.  Please reduce it.' . PHP_EOL;
         exit();
     }
