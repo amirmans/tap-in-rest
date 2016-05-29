@@ -135,9 +135,9 @@
   function previous_order($business_id, $consumer_id) {
       // $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
       //   where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
-      $query = "select i.*, p.name as product_name, p.short_description as product_short_description, COALESCE(q.avg, 0) as ti_rating from order_item i
-        inner join (select max(order_id) order_id from `order`
-        where business_id = $business_id and consumer_id = $consumer_id) t on t.order_id = i.order_id
+      $query = "select i.*, p.name as product_name, p.short_description as product_short_description, COALESCE(q.avg, 0) as ti_rating, note from order_item i
+        inner join (select order_id, note from `order`
+        where business_id = $business_id and consumer_id = $consumer_id order by order_id DESC limit 1) t on t.order_id = i.order_id
         left join product p on p.product_id = i.product_id
         left join (select avg, id  from rating where consumer_id = $consumer_id) as q on q.id = i.product_id;";
 
@@ -181,7 +181,7 @@
       $conn = connectToDB();
       $conn->set_charset("utf8");
       $insert_query = "insert into `order` (business_id, consumer_id, total, status, no_items, note, date)
-      Values ($business_id, $customer_id, $total, 1, $no_items_in_order, $note, now());";
+      Values ($business_id, $customer_id, $total, 1, $no_items_in_order, \"$note\", now());";
       $conn->query($insert_query);
 
       $order_id = mysqli_insert_id($conn);
@@ -290,7 +290,7 @@
   }
 
   /**
-   * This is for testing purposes and isn't using in the actual program
+   * This is for testing purposes and isn't used in the actual program
    */
   function get_all_orders() {
       $query = "select * from `order` order by order_id desc;";
@@ -330,46 +330,13 @@
     return ($resultArr);
   }
 
-  /********************************************************************************************************/
-  /*   SIS Inv                                                                                            */
-  /********************************************************************************************************/
-  function login($userName, $password)
-  {
-      $query = "select count(*) from user  where user_name = '$userName' and password = '$password';";
-      return (getDBresult($query));
-  }
-
-  function sis_worksteps()
-  {
-      $query = "select workstep_name from workstep_info;";
-      return (getDBresult($query));
-  }
-
-  function getAllBatchesForJob($job_id)
-  {
-      $query = "SELECT
-    j.order_date, c.customer_name, p.product_name, b.*
-    FROM
-    job j,
-    customer c,
-    product p,
-    batch b
-    WHERE
-    j.customer_id = c.customer_id
-    AND p.job_id = j.job_id
-    AND b.job_id = j.job_id
-    AND j.job_id = $job_id;";
-
-      return (getDBresult($query));
-  }
-
   // main block
   $cmd = $_REQUEST['cmd'];
   $return_result = array();
+  header('Content-type: application/json');
 
   // process loop
   $cmdCounter = 0;
-  header('Content-type: application/json');
   do {
       switch ($cmdCounter) {
 
