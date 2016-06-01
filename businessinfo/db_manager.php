@@ -22,8 +22,7 @@ function stripslashes_deep($value)
  */
 // connect to database
 function connect() {
-  static $dbh = resource;
-  $dbh = 0;
+  static $dbh = 0;
   if (!$dbh) {
     $dbh = mysql_connect ("localhost", "artdoost_admin", "id0ntknow") or die ('I cannot connect to the database because: ' . mysql_error());
     mysql_select_db("artdoost_taptalk", $dbh);
