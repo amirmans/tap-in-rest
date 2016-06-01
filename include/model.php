@@ -358,6 +358,39 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return ($rc);
   }
 
+  function get_all_notifications_for_consumer($consumer_id) {
+    $query = "select * from notification where consumer_id = $consumer_id
+    order by time_sent DESC;";
+
+    return (getDBresult($query));
+  }
+
+  function save_all_notifications_for_consumer($request) {
+    $conn = getDBConnection();
+
+    $consumer_id = $request["consumer_id"];
+    $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id";
+    getDBresult($deleteQuery);
+
+    $prepared_statement = "Insert into notification (business_id, consumer_id, image, message, time_sent, time_read, notification_type_id)
+      values(?,?,?,?,?,?,?);";
+    foreach ($request["data"] as $notification) {
+      if (empty($notification["notification_type_id"]))
+      {
+        $notification_type = "";
+      } else {
+        $notification_type = $notification["notification_type_id"];
+      }
+      $prepared_query = $conn->prepare($prepared_statement);
+      $rc = $prepared_query->bind_param('sssssss',
+        $notification["business_id"], $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
+        $notification["time_read"],$notification_type);
+      $rc = $prepared_query->execute();
+    }
+
+    return ($rc);
+  }
+
   // main block
   $cmd = $_REQUEST['cmd'];
   $return_result = array();
@@ -517,18 +550,30 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
           $return_code = save_notifications_for_consumer_in_business($request);
           $final_result["status"] = $return_code;
           $final_result["message"] = "";
+          echo json_encode($final_result);
 
-        echo json_encode($final_result);
-
-        break 2;
-      }
+          break 2;
+        }
       case 10:
-      $pos = stripos($cmd, "get_notifications_for_consumer_in_business");
+        $pos = stripos($cmd, "get_notifications_for_consumer_in_business");
+        if ($pos !== false) {
+          $final_result = [];
+          $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+          $business_id = filter_input(INPUT_GET, 'business_id');
+          $return_result = get_notifications_for_consumer_in_business($consumer_id, $business_id);
+          $final_result["data"] = $return_result;
+          $final_result["status"] = 1;
+          $final_result["message"] = "";
+          echo json_encode($final_result);
+
+          break 2;
+        }
+      case 11:
+      $pos = stripos($cmd, "get_all_notifications_for_consumer");
       if ($pos !== false) {
         $final_result = [];
         $consumer_id = filter_input(INPUT_GET, 'consumer_id');
-        $business_id = filter_input(INPUT_GET, 'business_id');
-        $return_result = get_notifications_for_consumer_in_business($consumer_id, $business_id);
+        $return_result = get_all_notifications_for_consumer($consumer_id);
         $final_result["data"] = $return_result;
         $final_result["status"] = 1;
         $final_result["message"] = "";
@@ -537,10 +582,23 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
         break 2;
       }
+      case 12:
+        $request = json_decode(file_get_contents('php://input'), TRUE);
+        $cmd_post = $request["cmd"];
+        $pos = stripos($cmd_post, "save_all_notifications_for_consumer");
+        if ($pos !== false) {
+          $final_result = [];
+          $return_code = save_all_notifications_for_consumer($request);
+          $final_result["status"] = $return_code;
+          $final_result["message"] = "";
+          echo json_encode($final_result);
+
+          break 2;
+      }
       default:
-      break 2;
+        break 2;
       } // switch
 
       $cmdCounter++;
-    } while ($cmdCounter < 11) ;
+    } while ($cmdCounter < 13) ;
     ?>
