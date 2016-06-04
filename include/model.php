@@ -68,7 +68,7 @@
     p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
     p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name
     FROM product p, product_category c, product_option o
-    WHERE p.businessID = $businessID AND c.business_id =  $businessID and p.availability_status = 1
+    WHERE p.businessID = $businessID AND c.business_id =  $businessID
     AND p.product_category_id = c.product_category_id) as s
     left join (select id, avg, consumer_id from rating where type = 2 and consumer_id = $consumer_id) as q on q.id = s.product_id
     ORDER BY category_name ASC;";
@@ -95,7 +95,7 @@
      }
      $product_id = $row["product_id"];
      $optionWithCategories =  get_options_for_products($product_id);
- //         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id and availability_status = 1;";
+ //         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id;";
  // //            $option_result = $conn->query($option_query);
  //         $option_result = $conn->query($option_query);
  //         $option_resultArr["options"] = array();
@@ -306,14 +306,14 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     foreach ($optionCats as $optionCat) {
       $optionCat_id = $optionCat["product_option_category_id"];
       if ($product_id) {
-        $query = "select p.option_id, p.name, price, description
+        $query = "select p.option_id, p.name, price, description, availability_status
         from product_option p, product_option_category c
-        where c.product_option_category_id = $optionCat_id and product_id = $product_id and availability_status = 1
+        where c.product_option_category_id = $optionCat_id and product_id = $product_id
         and p.product_option_category_id = c.product_option_category_id;";
       } else {
-        $query = "select p.option_id, p.name, price, description
+        $query = "select p.option_id, p.name, price, description, availability_status
         from product_option p, product_option_category c
-        where c.product_option_category_id = $optionCat_id and availability_status = 1 and p.product_option_category_id = c.product_option_category_id;";
+        where c.product_option_category_id = $optionCat_id and p.product_option_category_id = c.product_option_category_id;";
         $product_id = 0;
       }
       $options = getDBresult($query);
@@ -342,16 +342,23 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
     $consumer_id = $request["consumer_id"];
     $business_id = $request["business_id"];
-    $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id and business_id = $business_id;";
-    getDBresult($deleteQuery);
+    // $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id and business_id = $business_id;";
+    // getDBresult($deleteQuery);
 
-    $prepared_statement = "Insert into notification (business_id, consumer_id, image, message, time_sent, time_read)
-      values(?,?,?,?,?,?);";
+    // the client app, always has the notification ID, since it always gets its the list of notifications from the server, which includes notification_id
+    $prepared_statement = "Insert into notification (notification_id, business_id, consumer_id, image, message, time_sent, time_read, notification_type_id, is_deleted)
+      values(?,?,?,?,?,?,?,?,?)
+      ON DUPLICATE KEY UPDATE time_read=?, is_deleted =?";
     foreach ($request["data"] as $notification) {
+      if (empty($notification["is_deleted"]) ) {
+        $is_deleted = 0;
+      } else {
+        $is_deleted = $notification["is_deleted"];
+      }
       $prepared_query = $conn->prepare($prepared_statement);
-      $rc = $prepared_query->bind_param('ssssss',
-        $business_id, $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
-        $notification["time_read"]);
+      $rc = $prepared_query->bind_param('ssssssssisi',
+        $notification["notification_id"], $business_id, $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
+        $notification["time_read"], $notification["notification_type_id"], $is_deleted, $notification["time_read"], $is_deleted);
       $rc = $prepared_query->execute();
     }
 
@@ -366,25 +373,48 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
   }
 
   function save_all_notifications_for_consumer($request) {
+    // $conn = getDBConnection();
+
+    // $consumer_id = $request["consumer_id"];
+    // $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id";
+    // getDBresult($deleteQuery);
+
+    // $prepared_statement = "Insert into notification (business_id, consumer_id, image, message, time_sent, time_read, notification_type_id)
+    //   values(?,?,?,?,?,?,?);";
+    // foreach ($request["data"] as $notification) {
+    //   if (empty($notification["notification_type_id"]))
+    //   {
+    //     $notification_type = "";
+    //   } else {
+    //     $notification_type = $notification["notification_type_id"];
+    //   }
+    //   $prepared_query = $conn->prepare($prepared_statement);
+    //   $rc = $prepared_query->bind_param('sssssss',
+    //     $notification["business_id"], $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
+    //     $notification["time_read"],$notification_type);
+    //   $rc = $prepared_query->execute();
+    // }
     $conn = getDBConnection();
 
     $consumer_id = $request["consumer_id"];
-    $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id";
-    getDBresult($deleteQuery);
+    // $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id and business_id = $business_id;";
+    // getDBresult($deleteQuery);
 
-    $prepared_statement = "Insert into notification (business_id, consumer_id, image, message, time_sent, time_read, notification_type_id)
-      values(?,?,?,?,?,?,?);";
+    // the client app, always has the notification ID, since it always gets its the list of notifications from the server, which includes notification_id
+    $prepared_statement = "Insert into notification (notification_id, business_id, consumer_id, image, message, time_sent, time_read, notification_type_id, is_deleted)
+      values(?,?,?,?,?,?,?,?,?)
+      ON DUPLICATE KEY UPDATE time_read=?, is_deleted =?";
     foreach ($request["data"] as $notification) {
-      if (empty($notification["notification_type_id"]))
-      {
-        $notification_type = "";
+      if (empty($notification["is_deleted"]) ) {
+        $is_deleted = 0;
       } else {
-        $notification_type = $notification["notification_type_id"];
+        $is_deleted = $notification["is_deleted"];
       }
       $prepared_query = $conn->prepare($prepared_statement);
-      $rc = $prepared_query->bind_param('sssssss',
-        $notification["business_id"], $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
-        $notification["time_read"],$notification_type);
+      $rc = $prepared_query->bind_param('ssssssssisi',
+        $notification["notification_id"],  $notification["business_id"], $consumer_id, $notification["image"], $notification["message"],
+        $notification["time_sent"], $notification["time_read"], $notification["notification_type_id"], $is_deleted,
+        $notification["time_read"], $is_deleted);
       $rc = $prepared_query->execute();
     }
 
