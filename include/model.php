@@ -337,6 +337,12 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return (getDBresult($query));
   }
 
+  function get_average_wait_time_for_business($business_id) {
+    $query = "select businessID, process_time from business_customers where businessID = $business_id;";
+    return (getDBresult($query));
+  }
+
+
   function save_notifications_for_consumer_in_business($request) {
     $conn = getDBConnection();
 
@@ -625,10 +631,22 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
           break 2;
       }
+      case 13:
+        $pos = stripos($cmd, "get_average_wait_time_for_business");
+        if ($pos !== false) {
+          $business_id = filter_input(INPUT_GET, 'business_id');
+          $final_result = [];
+          $return_code = get_average_wait_time_for_business($business_id);
+          $final_result["status"] = 0;
+          $final_result["data"] = $return_code[0];
+          echo json_encode($final_result);
+
+          break 2;
+      }
       default:
         break 2;
       } // switch
 
       $cmdCounter++;
-    } while ($cmdCounter < 13) ;
+    } while ($cmdCounter < 14) ;
     ?>
