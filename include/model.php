@@ -331,7 +331,7 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
   }
 
   function get_notifications_for_consumer_in_business($consumer_id, $business_id) {
-    $query = "select * from notification where consumer_id = $consumer_id and business_id = $business_id
+    $query = "select * from notification where consumer_id = $consumer_id and is_deleted = 0 and business_id = $business_id
     order by time_sent DESC;";
 
     return (getDBresult($query));
@@ -372,7 +372,7 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
   }
 
   function get_all_notifications_for_consumer($consumer_id) {
-    $query = "select * from notification where consumer_id = $consumer_id
+    $query = "select * from notification where consumer_id = $consumer_id and is_deleted = 0
     order by time_sent DESC;";
 
     return (getDBresult($query));
