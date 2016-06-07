@@ -53,6 +53,24 @@
     }
   }
 
+  function get_all_businesses_info($consumer_id) {
+    $tableName = 'business_customers';
+    if ($consumer_id) {
+      $query = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
+        as ti_rating from business_customers a
+        left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+        left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r
+        on r.id = a.businessID  where a.active = 1;";
+    } else {
+      // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
+      $query = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from business_customers a
+        left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+        left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID where a.active = 1;";
+    }
+
+    return getDBresult($query);
+  }
+
   function products_for_business($businessID, $consumer_id)
   {
     if (empty($consumer_id)) {
@@ -643,10 +661,25 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
           break 2;
       }
+      case 15:
+        $pos = stripos($cmd, "get_all_businesses_info");
+        if ($pos !== false) {
+          $consumer_id = filter_input(INPUT_GET, '$consumer_id');
+          $final_result = [];
+          $result = get_all_businesses_info($consumer_id);
+          $final_result["status"] = 0;
+          $final_result["data"] = $result;
+          if (!$result) {
+            $final_result["status"] = -10;
+          }
+          echo json_encode($final_result);
+
+          break 2;
+      }
       default:
         break 2;
       } // switch
 
       $cmdCounter++;
-    } while ($cmdCounter < 14) ;
+    } while ($cmdCounter < 15) ;
     ?>
