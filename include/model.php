@@ -186,20 +186,39 @@ function previous_order($business_id, $consumer_id) {
 return ($resultWithOptions);
 }
 
-
-function save_order($business_id, $customer_id, $total, $orderData, $note) {
+function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount,
+  $tax_amount, $cc_last_4_digits, $orderData, $note) {
   if (empty($note)) {
     $note = "";
   }
+  //number of items in an order is different from number of data, a entry could have quantity of grater than 1
   $no_items_in_order = 0;
   foreach ($orderData as $orderRow) {
    $no_items_in_order += $orderRow["quantity"];
  }
+ if (empty($subtotal)) {
+  $subtotal = 0.0;
+ }
+  if (empty($tip_amount)) {
+  $tip_amount = 0.0;
+ }
+  if (empty($points_dollar_amount)) {
+  $points_dollar_amount = 0.0;
+ }
+  if (empty($tax_amount)) {
+  $tax_amount = 0.0;
+ }
+  if (empty($cc_last_4_digits)) {
+  $cc_last_4_digits = "";
+ }
 
  $conn = connectToDB();
  $conn->set_charset("utf8");
- $insert_query = "insert into `order` (business_id, consumer_id, total, status, no_items, note, date)
- Values ($business_id, $customer_id, $total, 1, $no_items_in_order, \"$note\", now());";
+ // status
+ $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
+    points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date)
+ Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
+    \"$cc_last_4_digits\", 1, $no_items_in_order, \"$note\", now());";
  $conn->query($insert_query);
 
  $order_id = mysqli_insert_id($conn);
@@ -473,7 +492,9 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
       $cmd_post = $request["cmd"];
       $pos = stripos($cmd_post, "save_order");
       if ($pos !== false) {
-        $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"], $request["data"], $request["note"]);
+        $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"]
+          ,$request["subtotal"], $request["tip_amount"], $request["points_dollar_amount"], $request["tax_amount"]
+          ,$request["cc_last_4_digits"], $request["data"], $request["note"]);
         $pointsToAdd = round($request["total"],0,PHP_ROUND_HALF_UP);
         save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
         if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
