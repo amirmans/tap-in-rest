@@ -464,8 +464,13 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return ($rc);
   }
 
-  function remove_cc($consumer_id, $ccDataArr) {
+  function get_consumer_all_cc_info($consumer_id) {
+    $query = "select * from consumer_cc_info where consumer_id = $consumer_id;";
 
+    return (getDBresult($query));
+  }
+
+  function remove_cc($consumer_id, $ccDataArr) {
     foreach ($ccDataArr as $ccData) {
       $cc_no = $ccData["cc_no"];
       $exp_date = $ccData["expiration_date"];
@@ -705,10 +710,10 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
           break 2;
       }
-      case 15:
+      case 14:
         $pos = stripos($cmd, "get_all_businesses_info");
         if ($pos !== false) {
-          $consumer_id = filter_input(INPUT_GET, '$consumer_id');
+          $consumer_id = filter_input(INPUT_GET, 'consumer_id');
           $final_result = [];
           $result = get_all_businesses_info($consumer_id);
           $final_result["status"] = 0;
@@ -720,7 +725,7 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
           break 2;
       }
-      case 16:
+      case 15:
       $request = json_decode(file_get_contents('php://input'), TRUE);
       $cmd_post = $request["cmd"];
       $pos = stripos($cmd_post, "remove_cc");
@@ -732,6 +737,21 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         echo json_encode($final_result);
 
         break 2;
+      }
+      case 16:
+        $pos = stripos($cmd, "get_consumer_all_cc_info");
+        if ($pos !== false) {
+          $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+          $final_result = [];
+          $result = get_consumer_all_cc_info($consumer_id);
+          $final_result["status"] = 0;
+          $final_result["data"] = $result;
+          if (!$result) {
+            $final_result["status"] = -10;
+          }
+          echo json_encode($final_result);
+
+          break 2;
       }
       default:
         break 2;
