@@ -464,6 +464,23 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return ($rc);
   }
 
+  function remove_cc($consumer_id, $ccDataArr) {
+
+    foreach ($ccDataArr as $ccData) {
+      $cc_no = $ccData["cc_no"];
+      $exp_date = $ccData["expiration_date"];
+      $cvv = $ccData["cvv"];
+      $zip = $ccData["zip_code"];
+
+      $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= \"$exp_date\"
+        and cvv=$cvv and zip_code=$zip;";
+
+      getDBresult($query);
+    }
+
+    return 1;
+  }
+
   // main block
   $cmd = $_REQUEST['cmd'];
   $return_result = array();
@@ -495,7 +512,13 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"]
           ,$request["subtotal"], $request["tip_amount"], $request["points_dollar_amount"], $request["tax_amount"]
           ,$request["cc_last_4_digits"], $request["data"], $request["note"]);
-        $pointsToAdd = round($request["total"],0,PHP_ROUND_HALF_UP);
+        // for backward compatibility
+        if (empty($request["subtotal"])) {
+          $amountForPoints = $request["total"];
+        } else {
+          $amountForPoints = $request["subtotal"];
+        }
+        $pointsToAdd = round($amountForPoints,0,PHP_ROUND_HALF_UP);
         save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
         if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
                   // making sure the points to redeem is always negative even if it is passed as a positive number
@@ -697,10 +720,23 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
 
           break 2;
       }
+      case 16:
+      $request = json_decode(file_get_contents('php://input'), TRUE);
+      $cmd_post = $request["cmd"];
+      $pos = stripos($cmd_post, "remove_cc");
+      if ($pos !== false) {
+        $final_result = [];
+        $return_code = remove_cc($request["consumer_id"], $request["data"]);
+        $final_result["status"] = $return_code;
+        $final_result["message"] = "";
+        echo json_encode($final_result);
+
+        break 2;
+      }
       default:
         break 2;
       } // switch
 
       $cmdCounter++;
-    } while ($cmdCounter < 15) ;
+    } while ($cmdCounter < 17) ;
     ?>
