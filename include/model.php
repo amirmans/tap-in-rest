@@ -264,7 +264,7 @@ function get_all_points_for_customer($businessID, $consumerID) {
    $query .= " and business_id = $businessID";
  }
 
- $query .= " order by (activity_time) DESC limit 50;";
+ $query .= " order by (activity_time) DESC;";
 
  $result = getDBresult($query);
 
