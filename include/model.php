@@ -89,7 +89,7 @@
     WHERE p.businessID = $businessID AND c.business_id =  $businessID
     AND p.product_category_id = c.product_category_id) as s
     left join (select id, avg, consumer_id from rating where type = 2 and consumer_id = $consumer_id) as q on q.id = s.product_id
-    ORDER BY category_name ASC;";
+    ORDER BY category_name ASC, s.name;";
 
     $conn = connectToDB();
     $conn->set_charset("utf8");
