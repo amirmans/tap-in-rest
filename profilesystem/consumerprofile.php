@@ -209,7 +209,7 @@ class API
         $Update_executeArray = array();
         
         $nickname = $this->getString('nickname', 30);
-        $password = $this->getString('password', 30, true);
+        $password = $this->getString('password', 20, true);
         $device_token = $this->getString('device_token', 64, true);
         $email = $this->getString('email', 30, true);
         $zipcode = $this->getString('zipcode', 12, true);
@@ -310,6 +310,8 @@ class API
     
     function handleJoinWithDeviceToken() {
         $nickname = $this->getString('nickname', 30);
+        $email = $this->getString('email', 30);
+        $zipcode = $this->getString('zipcode', 12);
         $password = $this->getString('password', 30);
         $age_group = $this->getInt("age_group");
         $device_token = $this->getString('device_token', 64);
@@ -327,11 +329,12 @@ class API
         $this->pdo->beginTransaction();
         $table_name = 'consumer_profile';
         
-        $sql_statement = "INSERT INTO $table_name (nickname, password, age_group, device_token) " . "VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE password=?, age_group=?";
+        $sql_statement = "INSERT INTO $table_name (nickname, password, email1, zipcode, age_group, device_token) " .
+            "VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE password=?, age_group=?, email1=?, zipcode =?";
         
         //      $stmt = $this->pdo->prepare('INSERT INTO consumer_profile (nickname, password) VALUES (?, ?)');
         $stmt = $this->pdo->prepare($sql_statement);
-        $stmt->execute(array($nickname, $password, $age_group, $device_token, $password, $age_group));
+        $stmt->execute(array($nickname, $password, $email, $zipcode, $age_group, $device_token, $password, $age_group, $email, $zipcode));
         
         $userID = $this->pdo->lastInsertId();
         
@@ -418,9 +421,9 @@ class API
             $stmt->execute($executeArray);
         } else {
             $device_token = $this->getString('device_token', 64);
-            $statementString = "UPDATE $table_name SET nickname = ?, password = ?, age_group = ?, device_token = ?  WHERE uid = ?";
+            $statementString = "UPDATE $table_name SET nickname = ?, password = ?, email1 = ?, zipcode = ?, age_group = ?, device_token = ?  WHERE uid = ?";
             $stmt = $this->pdo->prepare($statementString);
-            $stmt->execute(array($nickname, $password, $age_group, $device_token, $uid));
+            $stmt->execute(array($nickname, $password, $email, $zipcode, $age_group, $device_token, $uid));
         }
     }
     
