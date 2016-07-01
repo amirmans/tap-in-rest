@@ -161,7 +161,7 @@ class API
                     $this->handleJoin();
                     return;
                 case 'update':
-                    $this->handleUpdate();
+                    $this->handleJoin();
                     return;
                 case 'updateDeviceToken':
                     $this->handleUpdateDeviceToken();
@@ -218,8 +218,8 @@ class API
         $table_name = 'consumer_profile';
         $updateStatement = "";
         
-        $executeArray[] = $nickname;
-        $sqlStatement = "INSERT INTO $table_name (nickname";
+        $executeArray[] = $email;
+        $sqlStatement = "INSERT INTO $table_name (email1";
         $valuesStatement = " VALUES(?";
         if (!empty($password)) {
             $executeArray[] = $password;
@@ -243,13 +243,13 @@ class API
             $valuesStatement = $valuesStatement . ", ?";
         }
         
-        if (!empty($email)) {
-            $executeArray[] = $email;
-            $sqlStatement = $sqlStatement . " ,email1";
+        if (!empty($nickname)) {
+            $executeArray[] = $nickname;
+            $sqlStatement = $sqlStatement . " ,nickname";
             if (strlen($updateStatement) > 1) {
                 $updateStatement = $updateStatement . ", ";
             }
-            $updateStatement = $updateStatement . "email1 = ?";
+            $updateStatement = $updateStatement . "nickname = ?";
             $Update_executeArray[] = $email;
             $valuesStatement = $valuesStatement . ", ?";
         }
