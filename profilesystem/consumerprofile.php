@@ -250,7 +250,7 @@ class API
                 $updateStatement = $updateStatement . ", ";
             }
             $updateStatement = $updateStatement . "nickname = ?";
-            $Update_executeArray[] = $email;
+            $Update_executeArray[] = $nickname;
             $valuesStatement = $valuesStatement . ", ?";
         }
         if (!empty($zipcode)) {
