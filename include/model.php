@@ -343,14 +343,16 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     foreach ($optionCats as $optionCat) {
       $optionCat_id = $optionCat["product_option_category_id"];
       if ($product_id) {
-        $query = "select p.option_id, p.name, price, description, availability_status
-        from product_option p, product_option_category c
-        where c.product_option_category_id = $optionCat_id and product_id = $product_id
-        and p.product_option_category_id = c.product_option_category_id;";
+        $query = "select p.option_id, o.name, o.price, o.description, o.availability_status
+        from product_option p,  `option` o
+        where o.product_option_category_id = $optionCat_id and p.product_id = $product_id
+	      and o.option_id = p.option_id order by o.name;";
       } else {
-        $query = "select p.option_id, p.name, price, description, availability_status
-        from product_option p, product_option_category c
-        where c.product_option_category_id = $optionCat_id and p.product_option_category_id = c.product_option_category_id;";
+        // it seems this is not needed anymore
+        $query = "select p.option_id, o.name, o.price, o.description, o.availability_status
+        from product_option p,  `option` o
+        where o.product_option_category_id = $optionCat_id
+	      and o.option_id = p.option_id order by o.name;";
         $product_id = 0;
       }
       $options = getDBresult($query);
