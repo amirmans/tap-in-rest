@@ -56,16 +56,31 @@
   function get_all_businesses_info($consumer_id) {
     $tableName = 'business_customers';
     if ($consumer_id) {
-      $query = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
+      $query = "select distinct a.*, if (r.avg is null, 0, r.avg)
         as ti_rating from business_customers a
-        left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
         left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r
         on r.id = a.businessID  where a.active = 1;";
     } else {
       // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
-      $query = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from business_customers a
-        left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+      $query = "select distinct a.*, (0) as ti_rating from business_customers a
         left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID where a.active = 1;";
+      }
+
+    $conn = connectToDB();
+    $business_result = $conn->query($query);
+
+    $resultArr = array();
+    while ($row = mysqli_fetch_assoc($business_result)) {
+      $business_id = $row["businessID"];
+      $hours_query = "select businessID, opening_time, closing_time, break_start, break_end from  opening_hours where
+          weekday_id = WEEKDAY(now()) and businessID = $business_id order by priority DESC limit 1;";
+      $hours_result = getDBresult($hours_query);
+      $row["opening_time"] = $hours_result[0]["opening_time"];
+      $row["closing_time"] = $hours_result[0]["closing_time"];
+      $row["break_start"] = $hours_result[0]["break_start"];
+      $row["break_end"] = $hours_result[0]["break_end"];
+
+      $resultArr[] = $row;
     }
 
     return getDBresult($query);
