@@ -127,7 +127,7 @@
        $category_name = $row["category_name"];
      }
      $product_id = $row["product_id"];
-     $optionWithCategories =  get_options_for_products($product_id);
+     $optionWithCategories =  get_options_for_products($product_id, $businessID);
  //         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id;";
  // //            $option_result = $conn->query($option_query);
  //         $option_result = $conn->query($option_query);
@@ -349,8 +349,8 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return (getDBresult($query));
   }
 
-  function get_options_for_products($product_id) {
-    $option_category_query = "select * from product_option_category;";
+  function get_options_for_products($product_id, $business_id) {
+    $option_category_query = "select * from product_option_category where business_id = $business_id;";
     $optionCats = getDBresult($option_category_query);
 
     $resultArr = array();
@@ -649,7 +649,8 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
       if ($pos !== false) {
         $final_result = [];
         $product_id = filter_input(INPUT_GET, 'product_id');
-        $return_result = get_options_for_products($product_id);
+        $business_id = filter_input(INPUT_GET, 'business_id');
+        $return_result = get_options_for_products($product_id, $business_id );
 
         $final_result["status"] = 1;
         $final_result["message"] = "";
