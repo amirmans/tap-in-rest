@@ -217,7 +217,7 @@ class API
         $nickname = $this->getString('nickname', 30, true);
         $password = $this->getString('password', 20, true);
         $device_token = $this->getString('device_token', 64, true);
-        $uuid = $this->getString('uid', 64, true);
+        $uuid = $this->getString('uuid', 64, true);
         $email = $this->getString('email', 30, true);
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
