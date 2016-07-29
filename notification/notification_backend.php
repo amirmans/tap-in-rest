@@ -13,11 +13,7 @@ include '../include/dbmanager.inc';
 function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageName, $typeName, $dateTimeSent) {
 //     $apnsHost = 'gateway.sandbox.push.apple.com';
     //$apnsHost = 'gateway.push.apple.com';
-    $apnsHost = 'gateway.sandbox.push.apple.com';
-    $apnsPort = 2195;
-    //$apnsFeedbackHost = 'feedback.sandbox.push.apple.com';
-    //$apnsFeedbackPort = 2196;
-    $apnsCert = 'tapin_dev.pem';
+
 
 
     // device token is an associative Array
@@ -27,6 +23,8 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
 
         $deviceTokens = getAllFieldsWithName("consumer_profile", 'device_token', " nickName = \"$nickName\"");
         $deviceToken = $deviceTokens[0]['device_token'];
+
+        $deviceToken = "b27862d8c169669627776552c6f62a990e810393f5f60533bdd1cd0eeaaf7db0";
         if (strlen($deviceToken) <> 64)
             throw new Exception('Device Token is not correct - is the customer name right?');
     } catch (Exception $e) {
@@ -39,8 +37,12 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
         exit();
     }
 
-    // $passphrase = 'id0ntknow';
-    $passphrase = 'Tapin';
+    $apnsHost = 'gateway.sandbox.push.apple.com';
+    $apnsPort = 2195;
+     //$apnsFeedbackHost = 'feedback.sandbox.push.apple.com';
+     //$apnsFeedbackPort = 2196;
+    $apnsCert = 'ck.pem';
+    $passphrase = 'id0ntknow';
     $ctx = stream_context_create();
     stream_context_set_option($ctx, 'ssl', 'local_cert', $apnsCert);
     stream_context_set_option($ctx, 'ssl', 'passphrase', $passphrase);
@@ -59,16 +61,16 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
 
     // Create the payload body
     $body['aps'] = array(
-        'content-available' => 1,
+        // 'content-available' => 1,
         'alert' => $message,
         'sender' => $sender,
-        'business_id' => $businessID,
-        'imageName' => $imageName,
-        'timeSent' => $dateTimeSent,
+        // 'business_id' => $businessID,
+        // 'imageName' => $imageName,
+        // 'timeSent' => $dateTimeSent,
         'status' => 1,
         'notification_type ' => $notificationType,
-        "badge" => 1,
-        'sound' => 'newMessage.wav'
+        "badge" => 1
+        // 'sound' => 'newMessage.wav'
     );
 
     // Encode the payload as JSON
@@ -78,18 +80,18 @@ function APN_NotifyCustomers($nickName, $message, $sender, $businessID, $imageNa
     //   $msg = chr(0) . pack('n', 32) . pack('H*', $deviceToken) . pack('n', strlen($payload)) . $payload;
     $msg = chr(0) . chr(0) . chr(32) . pack('H*', str_replace(' ', '', $deviceToken)) . chr(0) . chr(strlen($payload))
             . $payload;
-  $msgLength = strlen($msg);
-    if ($msgLength > 256) {
-        echo 'Error - Too many charaters in your message.  Please reduce it.' . PHP_EOL;
-        exit();
-    }
+    // $msgLength = strlen($msg);
+    // if ($msgLength > 256) {
+    //     echo 'Error - Too many charaters in your message.  Please reduce it.' . PHP_EOL;
+    //     exit();
+    // }
     // Send it to the server
     $result = fwrite($fp, $msg, strlen($msg));
 
     if (!$result) {
         echo 'Message not delivered' . PHP_EOL;
     } else {
-        echo 'Message successfully delivered' . PHP_EOL;
+        echo 'Message successfully delivered for ' . $deviceToken . PHP_EOL;
     }
     // Close the connection to the server
     fclose($fp);

@@ -151,7 +151,8 @@ class API
         // method handle it. If the command is unknown, then exit with an error
         // message.
         //TODO: change back to _POST
-        if (isset($_REQUEST['cmd'])) {
+//        if (isset($_REQUEST['cmd'])) {
+          if (1) {
             switch (trim($_REQUEST['cmd'])) {
                 case 'join':
                     $this->handleJoin();
@@ -164,11 +165,16 @@ class API
                     $this->handleJoin();
                     return;
                 case 'updateDeviceToken':
+                case 'device_token':
                     $this->handleUpdateDeviceToken();
                     return;
                 case 'getQRImage':
                     $this->handleGetQRImage();
                     return;
+              default:
+                $this->handleJoin();
+                return;
+
             }
         }
 
@@ -208,9 +214,10 @@ class API
         $executeArray = array();
         $Update_executeArray = array();
 
-        $nickname = $this->getString('nickname', 30);
+        $nickname = $this->getString('nickname', 30, true);
         $password = $this->getString('password', 20, true);
         $device_token = $this->getString('device_token', 64, true);
+        $uuid = $this->getString('uid', 64, true);
         $email = $this->getString('email', 30, true);
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
@@ -218,8 +225,8 @@ class API
         $table_name = 'consumer_profile';
         $updateStatement = "";
 
-        $executeArray[] = $email;
-        $sqlStatement = "INSERT INTO $table_name (email1";
+        $executeArray[] = $uuid;
+        $sqlStatement = "INSERT INTO $table_name (uuid";
         $valuesStatement = " VALUES(?";
         if (!empty($password)) {
             $executeArray[] = $password;
@@ -263,6 +270,16 @@ class API
             $Update_executeArray[] = $zipcode;
             $valuesStatement = $valuesStatement . ", ?";
         }
+      if (!empty($email)) {
+        $executeArray[] = $email;
+        $sqlStatement = $sqlStatement . ",email1";
+        if (strlen($updateStatement) > 1) {
+          $updateStatement = $updateStatement . ", ";
+        }
+        $updateStatement = $updateStatement . "email1 = ?";
+        $Update_executeArray[] = $email;
+        $valuesStatement = $valuesStatement . ", ?";
+      }
         if ($age_group > - 1) {
             $executeArray[] = $age_group;
             $sqlStatement = $sqlStatement . ",age_group";
@@ -273,6 +290,7 @@ class API
             $Update_executeArray[] = $age_group;
             $valuesStatement = $valuesStatement . ", ?";
         }
+
         $sqlStatement = $sqlStatement . ")";
         $valuesStatement = $valuesStatement . ")";
 
@@ -453,7 +471,7 @@ class API
     // an error message.
     function getString($name, $maxLength, $optional = false) {
         $string = trim($_REQUEST[$name]);
-        if (optional && empty($string)) {
+        if ($optional && empty($string)) {
             return $string;
         }
         if (!isset($_REQUEST[$name])) exitWithHttpError(406, "Missing $name");
