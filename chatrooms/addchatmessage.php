@@ -1,6 +1,6 @@
 <?php
 header( 'Content-type: text/xml' );
-include '../include/tapforall_dsn.inc';
+include '../include/config_db.inc.php';
 
 switch($_SERVER['REQUEST_METHOD'])
 {
@@ -16,8 +16,8 @@ $table_name = filter_input($request_method, 'chatroom', FILTER_SANITIZE_STRING);
 $user_id = filter_input($request_method, 'user_id', FILTER_SANITIZE_STRING);
 
 $opt = array( PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_PERSISTENT => true);
-$dsn = "mysql:host=$host;dbname=$DBName";
-$dbh = new PDO($dsn, $DBUser, $DBPass, $opt);
+$dsn = "mysql:host=$db_host;dbname=$db_name";
+$dbh = new PDO($dsn, $db_user, $db_pass, $opt);
 
 if ($conn->connect_error) {
 	trigger_error('Database connection failed: '  . $conn->connect_error, E_USER_ERROR);
@@ -32,6 +32,6 @@ try {
 
 } catch (PDOException $e) {
 	echo $e->getMessage();
-} 
+}
 ?>
 <Successs/>

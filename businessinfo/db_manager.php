@@ -1,4 +1,5 @@
 <?php
+include '../include/config_db.inc.php';
 
 function removeslashes($string)
 {
@@ -22,10 +23,11 @@ function stripslashes_deep($value)
  */
 // connect to database
 function connect() {
+  global $db_host, $db_user, $db_pass, $db_name;
   static $dbh = 0;
   if (!$dbh) {
-    $dbh = mysql_connect ("localhost", "artdoost_admin", "id0ntknow") or die ('I cannot connect to the database because: ' . mysql_error());
-    mysql_select_db("artdoost_taptalk", $dbh);
+    $dbh = mysql_connect ($db_host, $db_user, $db_pass) or die ('I cannot connect to the database because: ' . mysql_error());
+    mysql_select_db($db_name, $dbh);
   }
   return $dbh;
 }

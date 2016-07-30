@@ -10,7 +10,7 @@ try
 	// if (!defined('APPLICATION_ENV'))
 	// 	define('APPLICATION_ENV', getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'production');
     define("APPLICATION_EN", "production");
-	// In development mode, we show all errors because we obviously want to 
+	// In development mode, we show all errors because we obviously want to
 	// know about them. We don't do this in production mode because that might
 	// expose critical details of our app or our database. Critical PHP errors
 	// will still be logged in the PHP and Apache error logs, so it's always
@@ -29,7 +29,7 @@ try
 	// Load the config file. I prefer to keep all configuration settings in a
 	// separate file so you don't have to mess around in the main code if you
 	// just want to change some settings.
-	require_once 'api_config.php';
+	require_once '../include/api_config.php';
 	$config = $config['production'];
 
 	// In development mode, we fake a delay that makes testing more realistic.
@@ -42,7 +42,7 @@ try
 	// instance of that class and let it handle the request.
 	$api = new API($config);
 	$api->handleCommand();
-    
+
 //	echo "OK" . PHP_EOL;
 }
 catch (Exception $e)
@@ -73,11 +73,11 @@ function exitWithHttpError($error_code, $message = '')
 
 	if ($message != '')
 		header('X-Error-Description: ' . $message);
-  
+
   //Amir was here
   echo ("Exiting with error: $error_code");
   error_log("Exiting with error: [$error_code]", 1);
-    
+
 	exit;
 }
 
@@ -89,7 +89,7 @@ function isValidUtf8String($string, $maxLength, $allowNewlines = false)
 	if (mb_check_encoding($string, 'UTF-8') === false)
 		return false;
 
-	// Don't allow control characters, except possibly newlines	
+	// Don't allow control characters, except possibly newlines
 	for ($t = 0; $t < strlen($string); $t++)
 	{
 		$ord = ord($string{$t});
@@ -132,8 +132,8 @@ class API
 	{
 		// Create a connection to the database.
 		$this->pdo = new PDO(
-			'mysql:host=' . $config['db']['host'] . ';dbname=' . $config['db']['dbname'], 
-			$config['db']['username'], 
+			'mysql:host=' . $config['db']['host'] . ';dbname=' . $config['db']['dbname'],
+			$config['db']['username'],
 			$config['db']['password'],
 			array());
 
@@ -178,7 +178,7 @@ class API
 	// - token: The device's device token. Must be a string of 64 hexadecimal
 	//          characters, or "0" if no token is available yet.
 	// - name:  The nickname of the user. Must be a UTF-8 string of maximum 255
-	//          bytes. Only the first 20 bytes are actually shown in the push 
+	//          bytes. Only the first 20 bytes are actually shown in the push
 	//          notifications.
 	// - code: chat room's - most likely the name of the business. Must be a UTF-8
 	//          string of maximum 255 bytes.
@@ -186,8 +186,8 @@ class API
 	function handleJoin()
 	{
         header('Content-type: text/html');
-    //udid was the device uniqueIdentifier. This is deprecated now. 
-    //so, we are changing thid field for user ID which is assigned to the user 
+    //udid was the device uniqueIdentifier. This is deprecated now.
+    //so, we are changing thid field for user ID which is assigned to the user
     //when they sign up in our account system
 //		$udid = $this->getUDID();
     	$userID = $this->getUserID();
@@ -212,9 +212,9 @@ class API
 
 //		$stmt = $this->pdo->prepare('INSERT INTO active_users (udid, device_token, nickname, secret_code, ip_address) VALUES (?, ?, ?, ?, ?)');
 //		$stmt->execute(array($udid, $token, $name, $code, $_SERVER['REMOTE_ADDR']));
-    $stmt = $this->pdo->prepare('INSERT INTO chatters (uid, chatroom_id, loggedin, 
+    $stmt = $this->pdo->prepare('INSERT INTO chatters (uid, chatroom_id, loggedin,
       time_of_logging_in, time_of_logging_off) VALUES (?, ?, 1, NOW(), NOW())');
-    // either bind each parameter explicitly 
+    // either bind each parameter explicitly
     // or bind when executing the statement $stmt->execute(array(':id'    => $uid, ':value' => $value
 //    $stmt->bindParam(':id', $udid); // PDOStatement::bindValue() is also possibly
 //    $stmt->bindParam(':chatroom', $code);
@@ -322,16 +322,16 @@ class API
         catch (Exception $e) {
          	if (APPLICATION_ENV == 'development')
                 var_dump($e);
-            
+
             $result_arr['status_code'] = "-1";
         }
-        
+
         header('Content-type: application/json');
         $result_json = json_encode($result_arr);
         echo $result_json;
         exit();
     }
-  
+
   // This method is obselete
 	// Retrieves the device identifier from the POST data. If the UDID does not
 	// appear to be valid, the script exits with an error message.
@@ -360,7 +360,7 @@ class API
 
 		return true;
 	}
-  
+
   function getUserID()
 	{
 		if (!isset($_REQUEST['userID']))
@@ -413,7 +413,7 @@ class API
 		if (!$this->isValidDeviceToken($token))
 			exitWithHttpError(405, 'Invalid device token');
 
-		return $token;	
+		return $token;
 	}
 
 	// Checks whether the format of the device token is correct (64 hexadecimal
@@ -476,7 +476,7 @@ class API
 	}
 
 	// Adds a push notification to the push queue. The notification will not
-	// be sent immediately. The server runs a separate script, push.php, which 
+	// be sent immediately. The server runs a separate script, push.php, which
 	// periodically checks for new entries in this database table and sends
 	// them to the APNS servers.
 	function addPushNotification($deviceToken, $payload)

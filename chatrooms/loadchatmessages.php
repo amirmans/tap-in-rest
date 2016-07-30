@@ -1,11 +1,11 @@
 <?php
 //header( 'Content-type: text/xml' );
-include '../include/tapforall_dsn.inc';
+include '../include/config_db.inc.php';
 
 // open database
 $opt = array( PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_PERSISTENT => true);
-$dsn = "mysql:host=$host;dbname=$DBName";
-$dbh = new PDO($dsn, $DBUser, $DBPass, $opt);
+$dsn = "mysql:host=$db_host;dbname=$db_name";
+$dbh = new PDO($dsn, $db_user, $db_pass, $opt);
 
 if ($conn->connect_error) {
 	trigger_error('Database connection failed: '  . $conn->connect_error, E_USER_ERROR);
@@ -22,7 +22,7 @@ if (is_null($past))
 
 $result = array();
 
-// construct sql statement 
+// construct sql statement
 try {
     $statementHandler = $dbh->prepare("SELECT * FROM $table_name where (dateAdded >= CURRENT_TIMESTAMP - INTERVAL :hoursago HOUR)");
     $statementHandler->bindParam(':hoursago', $past);
@@ -30,10 +30,10 @@ try {
     $result = $statementHandler->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
 	echo $e->getMessage();
-} 
+}
 
 // construct output for the client
-//$reverse_time_array = array_reverse($result); 
+//$reverse_time_array = array_reverse($result);
 print json_encode($result);
 //mysql_free_result($result);
 ?>
