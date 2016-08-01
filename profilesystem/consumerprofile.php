@@ -311,18 +311,23 @@ class API
         $this->pdo->commit();
 
         global $result_arr;
-        $result_arr['userID'] = $userID;
+        if ($userID == 0) {
+            $sql_statement = "Select * from $table_name where uuid = ?";
+            $stmt = $this->pdo->prepare($sql_statement);
+            $stmt->execute(array($uuid));
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $sql_statement = "Select qrcode_file from $table_name where uid = ?";
-        $stmt = $this->pdo->prepare($sql_statement);
-        $stmt->execute(array($userID));
-        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if ($result !== false) {
-            $result_arr['qrcode_file'] = $result[0]['qrcode_file'];
-
-            //echo $userID;
-
+            if ($result !== false) {
+                $result_arr['qrcode_file'] = $result[0]['qrcode_file'];
+                $result_arr['uid'] = $result[0]['uid'];
+                $result_arr['email1'] = $result[0]['email1'];
+                $result_arr['nickname'] = $result[0]['nickname'];
+                $result_arr['zipcode'] = $result[0]['zipcode'];
+                $result_arr['dob'] = $result[0]['dob'];
+                $result_arr['age_group'] = $result[0]['age_group'];
+            }
+        } else {
+            $result_arr['userID'] = $userID;
         }
     }
 
