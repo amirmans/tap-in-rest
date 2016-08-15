@@ -619,9 +619,12 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
       $pos = stripos($cmd, "get_all_points");
       if ($pos !== false) {
         $businessID = filter_input(INPUT_GET, 'businessID');
+        if (empty($businessID))
+          $businessID = filter_input(INPUT_GET, 'business_id');
+
         $consumerID = filter_input(INPUT_GET, 'consumerID');
         if (empty($consumerID))
-          $consumerID = filter_input(INPUT_GET, 'customer_id');
+          $consumerID = filter_input(INPUT_GET, 'consumer_id');
 
         $return_result = get_all_points_for_customer($businessID, $consumerID);
         $final_result = [];
