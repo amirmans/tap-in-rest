@@ -72,8 +72,8 @@
     $resultArr = array();
     //in mysql weekday number for monday is 0 and sunday is 6
     $day_number = date('N', time());
-    $day_number = $day_number - 1;
-    if ($day_number < 0) $day_number = 6;
+    // $day_number = $day_number - 1;
+    // if ($day_number < 0) $day_number = 6;
 
     while ($row = mysqli_fetch_assoc($business_result)) {
       $business_id = $row["businessID"];

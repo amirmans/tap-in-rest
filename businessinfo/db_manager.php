@@ -142,16 +142,17 @@ function sendListOfAllBusinesses($consumer_id, $tableName = null) {
   // from business_customers a left join  opening_hours b
   // on (b.businessID = a.businessID) and b.weekday_id = WEEKDAY(now()) where a.active = 1;";
 
+  $week_day = date('N', time());
   if ($consumer_id) {
     $select_statement = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
       as ti_rating from business_customers a
-      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = $week_day )
       left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r
       on r.id = a.businessID  where a.active = 1;";
   } else {
     // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
     $select_statement = "select distinct a.*, b.opening_time, b.closing_time , (0) as ti_rating from business_customers a
-      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = WEEKDAY(now()) )
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = $week_day )
       left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID where a.active = 1;";
   }
 
