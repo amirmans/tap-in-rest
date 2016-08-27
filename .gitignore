@@ -12,3 +12,4 @@ profilesystem/customer_files
 adminpanel
 /notification/TapInCert_dev.pem
 /notification/TapInCert_prod.pem
+customer_files/
