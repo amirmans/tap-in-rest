@@ -191,10 +191,11 @@ function previous_order($business_id, $consumer_id) {
     if (empty($options_csv)) {
      $resultWithOptions[] = $resultRow;
    } else {
-    $optionArray = explode(',', $options_csv);
+     $product_id = $resultRow["[product_id"];
+      $optionArray = explode(',', $options_csv);
     $options = array();
     foreach ($optionArray as $option) {
-      $optionQuery = "select option_id, name, price from product_option where option_id = $option";
+      $optionQuery = "select option_id, name, price from product_option where option_id = $option  and product_id = $product_id";
       $db_options = $conn->query($optionQuery);
       while ($option_row = mysqli_fetch_assoc($db_options)) {
         $options["options"][] = $option_row;
