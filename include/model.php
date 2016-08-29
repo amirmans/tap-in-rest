@@ -97,12 +97,12 @@
     if (empty($consumer_id)) {
       $consumer_id = -1;
     }
-    $product_query = "SELECT distinct product_id, category_name, s.businessID, s.SKU, s.name, s.product_category_id
+    $product_query = "SELECT distinct product_id, category_name, s.businessID,  COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
     ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
     ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
     ,s.has_option, s.bought_with_rewards, s.more_information
     ,q.avg as ti_rating, q.consumer_id
-    from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_category_id,
+    from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
     p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
     p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
     p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name
@@ -191,7 +191,7 @@ function previous_order($business_id, $consumer_id) {
     if (empty($options_csv)) {
      $resultWithOptions[] = $resultRow;
    } else {
-     $product_id = $resultRow["[product_id"];
+     $product_id = $resultRow["product_id"];
       $optionArray = explode(',', $options_csv);
     $options = array();
     foreach ($optionArray as $option) {
