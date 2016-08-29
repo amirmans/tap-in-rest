@@ -71,9 +71,10 @@
 
     $resultArr = array();
     //in mysql weekday number for monday is 0 and sunday is 6
+//    $day_number1 = date('N', strtotime("Sunday"));
+//    $day_number2 = date('N', strtotime("Monday"));
     $day_number = date('N', time());
-    // $day_number = $day_number - 1;
-    // if ($day_number < 0) $day_number = 6;
+    if ($day_number > 6) $day_number = 0;
 
     while ($row = mysqli_fetch_assoc($business_result)) {
       $business_id = $row["businessID"];
@@ -378,7 +379,8 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         $product_id = 0;
       }
       $options = getDBresult($query);
-      $resultArr[$index]["optionName"] =  $optionCat["name"];
+      $resultArr[$index]["option_category_name"] =  $optionCat["name"];
+      $resultArr[$index]["only_choose_one"] =  $optionCat["only_choose_one"];
       $resultArr[$index]["optionData"] =  $options;
       $index++;
     }
