@@ -378,7 +378,8 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         $product_id = 0;
       }
       $options = getDBresult($query);
-      $resultArr[$index]["optionName"] =  $optionCat["name"];
+      $resultArr[$index]["option_category_name"] =  $optionCat["name"];
+      $resultArr[$index]["only_choose_one"] =  $optionCat["only_choose_one"];
       $resultArr[$index]["optionData"] =  $options;
       $index++;
     }
