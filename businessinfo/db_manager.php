@@ -141,8 +141,9 @@ function sendListOfAllBusinesses($consumer_id, $tableName = null) {
   // $select_statement = "select distinct a.*, b.opening_time, b.closing_time
   // from business_customers a left join  opening_hours b
   // on (b.businessID = a.businessID) and b.weekday_id = WEEKDAY(now()) where a.active = 1;";
-
   $week_day = date('N', time());
+  if ($week_day > 6) $week_day = 0;
+
   if ($consumer_id) {
     $select_statement = "select distinct a.*, b.opening_time, b.closing_time, if (r.avg is null, 0, r.avg)
       as ti_rating from business_customers a
