@@ -315,21 +315,25 @@ $return_result["total_available_points"] = $total_available;
       // $return_result["points_redeemed"] =  $points_redeemed;
 $return_result["points"] =  $points;
 
-$next_level_query= " SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+$next_level_query=
+    "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
 , message FROM points_map main RIGHT JOIN
-(SELECT MIN(points) as next_level FROM points_map WHERE  $total_available < points ) as sub
-on sub.next_level = main.points";
-$current_level_query = "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+(SELECT MIN(points) as next_level FROM points_map WHERE  $total_available < points ) as sub on sub.next_level = main.points;";
+$current_level_query =
+    "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
 , message FROM points_map main RIGHT JOIN
-(SELECT MAX(points) as next_level FROM points_map WHERE  $total_available >= points ) as sub on sub.next_level = main.points";
+(SELECT MAX(points) as next_level FROM points_map WHERE  $total_available >= points ) as sub on sub.next_level = main.points;";
 
 if ($businessID  && $businessID <> "0") {
-  $next_level_query .= " and business_id = $businessID;";
-  $current_level_query .= " and business_id = $businessID;";
-}
-else {
-  $next_level_query .= ";";
-  $current_level_query .= ";";
+    $next_level_query=
+        "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+, message FROM points_map main RIGHT JOIN
+(SELECT MIN(points) as next_level FROM points_map WHERE  $total_available < points and business_id = $businessID ) as sub on sub.next_level = main.points;";
+    $current_level_query =
+        "SELECT coalesce(points,0) as points, coalesce(equivalent,0) as dollar_value, points_level_name
+, message FROM points_map main RIGHT JOIN
+(SELECT MAX(points) as next_level FROM points_map WHERE  $total_available >= points and business_id = $businessID) as sub on sub.next_level = main.points;";
+
 }
 
 $points_next_level = getDBresult($next_level_query);
