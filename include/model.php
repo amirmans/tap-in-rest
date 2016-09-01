@@ -158,14 +158,30 @@
   if (!$name_on_card) {
     $name_on_card = "";
   }
-  $prepared_stmt = "INSERT INTO consumer_cc_info
-  (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code)
-  VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
-  name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?;";
-  $prepared_query = $conn->prepare($prepared_stmt);
-  $rc = $prepared_query->bind_param('sssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
-    ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $name_on_card, $request["cc_no"]
-    , $request["expiration_date"], $request["cvv"], $request["zip_code"]);
+  $default = $request["default"];
+  if ( (!empty($default)) && ($default = 1)) {
+    $updateQuery = "update consumer_cc_info set default = 0 where consumer_id = $consumer_id";
+    insertOrUpdateQuery($updateQuery);
+
+    $prepared_stmt = "INSERT INTO consumer_cc_info
+    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code, default)
+    VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, default = ?;";
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc = $prepared_query->bind_param('sssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
+      ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $default, $name_on_card, $request["cc_no"]
+      , $request["expiration_date"], $request["cvv"], $request["zip_code"], $default);
+
+  } else {
+    $prepared_stmt = "INSERT INTO consumer_cc_info
+    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code)
+    VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?;";
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc = $prepared_query->bind_param('sssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
+      ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $name_on_card, $request["cc_no"]
+      , $request["expiration_date"], $request["cvv"], $request["zip_code"]);
+  }
   $rc = $prepared_query->execute();
 
   return 0;
@@ -500,6 +516,12 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
     return (getDBresult($query));
   }
 
+  function get_consumer_default_cc($consumer_id) {
+    $query = "select * from consumer_cc_info where consumer_id = $consumer_id and default = 1;";
+
+    return (getDBresult($query));
+  }
+
   function remove_cc($consumer_id, $ccDataArr) {
     foreach ($ccDataArr as $ccData) {
       $cc_no = $ccData["cc_no"];
@@ -773,6 +795,21 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         break 2;
       }
       case 16:
+        $pos = stripos($cmd, "get_consumer_default_cc");
+        if ($pos !== false) {
+          $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+          $final_result = [];
+          $result = get_consumer_default_cc($consumer_id);
+          $final_result["status"] = 0;
+          $final_result["data"] = $result;
+          if (!$result) {
+            $final_result["status"] = -10;
+          }
+          echo json_encode($final_result);
+
+          break 2;
+      }
+      case 17:
         $pos = stripos($cmd, "get_consumer_all_cc_info");
         if ($pos !== false) {
           $consumer_id = filter_input(INPUT_GET, 'consumer_id');
@@ -792,5 +829,5 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
       } // switch
 
       $cmdCounter++;
-    } while ($cmdCounter < 17) ;
+    } while ($cmdCounter < 18) ;
     ?>
