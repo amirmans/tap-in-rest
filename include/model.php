@@ -9,6 +9,19 @@
   include_once(dirname(dirname(__FILE__)) . '/include/consts_server.inc');
   include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 
+  function send_mail_for_new_order($businessID, $orderID) {
+
+      $ch = curl_init();
+      $merchantMailURL = MerchantsBaseURL . "mail_new_order.php";
+      // curl_setopt($ch, CURLOPT_URL, "www.artdoost.com/adminpanel/mail_new_order.php");
+      curl_setopt($ch, CURLOPT_URL, $merchantMailURL);
+      curl_setopt($ch, CURLOPT_POST, 1);
+      curl_setopt($ch, CURLOPT_POSTFIELDS, "order_id=" . $orderID . "&business_id=" . $businessID);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      $server_output = curl_exec($ch);
+      curl_close($ch);
+      return $server_output;
+  }
   /*--------- database functions -----------------*/
   function connectToDB()
   {
@@ -160,13 +173,13 @@
   }
   $default = $request["default"];
   if ( (!empty($default)) && ($default = 1)) {
-    $updateQuery = "update consumer_cc_info set default = 0 where consumer_id = $consumer_id";
+    $updateQuery = "update consumer_cc_info set `default` = 0 where consumer_id = $consumer_id";
     insertOrUpdateQuery($updateQuery);
 
     $prepared_stmt = "INSERT INTO consumer_cc_info
-    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code, default)
+    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code, `default`)
     VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
-    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, default = ?;";
+    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, `default` = ?;";
     $prepared_query = $conn->prepare($prepared_stmt);
     $rc = $prepared_query->bind_param('sssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
       ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $default, $name_on_card, $request["cc_no"]
@@ -271,6 +284,11 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     $orderRow["price"], $orderRow["quantity"]);
    $rc = $prepared_query->execute();
  }
+ if ($order_id > 0){
+   send_mail_for_new_order($business_id, $order_id);
+   
+ }
+
  return $order_id;
 }
 
@@ -517,7 +535,7 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
   }
 
   function get_consumer_default_cc($consumer_id) {
-    $query = "select * from consumer_cc_info where consumer_id = $consumer_id and default = 1;";
+    $query = "select * from consumer_cc_info where consumer_id = $consumer_id and `default` = 1 order by `timestamp` desc limit 1;";
 
     return (getDBresult($query));
   }
@@ -797,9 +815,11 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
       case 16:
         $pos = stripos($cmd, "get_consumer_default_cc");
         if ($pos !== false) {
-          $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+          $consumerID = filter_input(INPUT_GET, 'consumerID');
+          if (empty($consumerID))
+            $consumerID = filter_input(INPUT_GET, 'consumer_id');
           $final_result = [];
-          $result = get_consumer_default_cc($consumer_id);
+          $result = get_consumer_default_cc($consumerID);
           $final_result["status"] = 0;
           $final_result["data"] = $result;
           if (!$result) {
