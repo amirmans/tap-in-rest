@@ -286,7 +286,7 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
  }
  if ($order_id > 0){
    send_mail_for_new_order($business_id, $order_id);
-   
+
  }
 
  return $order_id;
@@ -593,7 +593,8 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
         } else {
           $amountForPoints = $request["subtotal"];
         }
-        $pointsToAdd = round($amountForPoints,0,PHP_ROUND_HALF_UP);
+//        $pointsToAdd = round($amountForPoints,0,PHP_ROUND_HALF_UP);
+        $pointsToAdd = floor($amountForPoints);
         save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
         if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
                   // making sure the points to redeem is always negative even if it is passed as a positive number
