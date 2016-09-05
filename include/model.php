@@ -171,30 +171,29 @@
   if (!$name_on_card) {
     $name_on_card = "";
   }
+   $card_type = $request["card_type"];
+   if (!$card_type) {
+     $card_type = "";
+   }
   $default = $request["default"];
-  if ( (!empty($default)) && ($default = 1)) {
+  if ( (empty($default)) || ($default > 1) || ($default < 0)) {
+      $default = 0;
+  }
+
+  if ($default == 1) {
     $updateQuery = "update consumer_cc_info set `default` = 0 where consumer_id = $consumer_id";
     insertOrUpdateQuery($updateQuery);
-
-    $prepared_stmt = "INSERT INTO consumer_cc_info
-    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code, `default`)
-    VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
-    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, `default` = ?;";
-    $prepared_query = $conn->prepare($prepared_stmt);
-    $rc = $prepared_query->bind_param('sssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
-      ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $default, $name_on_card, $request["cc_no"]
-      , $request["expiration_date"], $request["cvv"], $request["zip_code"], $default);
-
-  } else {
-    $prepared_stmt = "INSERT INTO consumer_cc_info
-    (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code)
-    VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
-    name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?;";
-    $prepared_query = $conn->prepare($prepared_stmt);
-    $rc = $prepared_query->bind_param('sssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
-      ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $name_on_card, $request["cc_no"]
-      , $request["expiration_date"], $request["cvv"], $request["zip_code"]);
   }
+
+  $prepared_stmt = "INSERT INTO consumer_cc_info
+  (consumer_id, name_on_card, cc_no, expiration_date, cvv, zip_code, card_type, `default`)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
+  name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, card_type = ?, `default` = ?;";
+  $prepared_query = $conn->prepare($prepared_stmt);
+  $rc = $prepared_query->bind_param('sssssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
+    ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $card_type, $default, $name_on_card, $request["cc_no"]
+    , $request["expiration_date"], $request["cvv"], $request["zip_code"], $card_type, $default);
+
   $rc = $prepared_query->execute();
 
   return 0;
