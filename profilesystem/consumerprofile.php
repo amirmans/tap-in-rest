@@ -302,7 +302,10 @@ class API
         if (strlen($updateStatement) > 1) {
             $updateStatement = " ON DUPLICATE KEY UPDATE " . $updateStatement;
             $executeArray = array_merge($executeArray, $Update_executeArray);
+        } else {
+            $updateStatement = " ON DUPLICATE KEY UPDATE uuid = \"$uuid\";";
         }
+
         $finalSqlStatement = $sqlStatement . $valuesStatement . $updateStatement;
 
         $stmt = $this->pdo->prepare($finalSqlStatement);
