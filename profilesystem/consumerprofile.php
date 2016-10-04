@@ -330,7 +330,7 @@ class API
                 $result_arr['age_group'] = $result[0]['age_group'];
             }
         } else {
-            $result_arr['userID'] = $userID;
+            $result_arr['uid'] = $userID;
         }
     }
 
