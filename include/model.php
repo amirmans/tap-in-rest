@@ -119,12 +119,12 @@
     from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
     p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
     p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
-    p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name
+    p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name, c.listing_order
     FROM product p, product_category c, product_option o
     WHERE p.businessID = $businessID AND c.business_id =  $businessID
     AND p.product_category_id = c.product_category_id) as s
     left join (select id, avg, consumer_id from rating where type = 2 and consumer_id = $consumer_id) as q on q.id = s.product_id
-    ORDER BY category_name ASC, s.name;";
+    ORDER BY s.listing_order, category_name ASC, s.name;";
 
     $conn = connectToDB();
     $conn->set_charset("utf8");
@@ -395,7 +395,7 @@ function ti_setRating($type, $id, $rating, $consumer_id) {
   }
 
   function get_options_for_products($product_id, $business_id) {
-    $option_category_query = "select * from product_option_category where business_id = $business_id;";
+    $option_category_query = "select * from product_option_category where business_id = $business_id order by listing_order;";
     $optionCats = getDBresult($option_category_query);
 
     $resultArr = array();
