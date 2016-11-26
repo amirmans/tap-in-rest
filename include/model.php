@@ -1,6 +1,6 @@
 <?php
 date_default_timezone_set('America/Los_Angeles');
-static $conn = nil;
+static $conn = 0;
 
 //define('__ROOT__', dirname(dirname(dirname(__FILE__))));
 //$includePath = __ROOT__ . "../includes/";
@@ -111,6 +111,8 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
     if (empty($consumer_id)) {
         $consumer_id = -1;
     }
+
+    $sub_businesses = str_replace("\"", "", $sub_businesses);
     if (empty($sub_businesses)) {
         $product_query = "SELECT distinct product_id, category_icon, product_icon, category_name, s.businessID,  COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
       ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
@@ -161,6 +163,7 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
 
     $conn = connectToDB();
     $conn->set_charset("utf8");
+    $conn->query("SET SQL_BIG_SELECTS=1");  //Set it before your main query
     $product_result = $conn->query($product_query);
 
     $resultArr = array();
@@ -229,6 +232,9 @@ function save_cc_info($request) {
 
     $rc = $prepared_query->execute();
 
+    if ($rc === false) {
+      return -1;
+    }
     return 0;
 }
 
@@ -236,7 +242,7 @@ function save_cc_info($request) {
 function previous_order($business_id, $consumer_id) {
     // $query = "select i.* from order_item i inner join (select max(order_id) id from `order`
     //   where business_id = $business_id and consumer_id = $consumer_id) t on t.id = i.order_id;";
-    $query = "select i.*, p.name as product_name, p.short_description as product_short_description, COALESCE(q.avg, 0) as ti_rating, note from order_item i
+  $query = "select i.*, p.name as product_name, p.short_description as product_short_description, COALESCE(q.avg, 0) as ti_rating, note from order_item i
   inner join (select order_id, note from `order`
   where business_id = $business_id and consumer_id = $consumer_id order by order_id DESC limit 1) t on t.order_id = i.order_id
   left join product p on p.product_id = i.product_id
@@ -300,7 +306,7 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
         $consumer_delivery_id = 0;
     }
     if (empty($promotion_code)) {
-        $promotion_code = "";
+        $promotion_code = '""';
     } else {
         $promotion_code = '"' . $promotion_code . '"';
     }
@@ -310,6 +316,16 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     if (empty($delivery_charge_amount)) {
         $delivery_charge_amount = 0.0;
     }
+
+    // although total is given, we want to calculate it now
+    // later we will fix the bug in the client, or making the total argument redundant
+    $total = $subtotal - $promotion_discount_amount + $delivery_charge_amount + $tip_amount + $tax_amount
+            - points_dollar_amount;
+    if ($total < 0) {
+        $total = 0.0;
+    }
+
+    $total = round($total ,2);
 
     $conn = connectToDB();
     $conn->set_charset("utf8");
@@ -325,6 +341,10 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
 
     $order_id = mysqli_insert_id($conn);
 
+    if ($order_id > 0){
+        send_mail_for_new_order($business_id, $order_id);
+    }
+
     $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity) VALUES (?,?,?,?,?)";
     foreach ($orderData as $orderRow) {
 //           $option_ids_fld = json_decode ($orderRow["options"]);
@@ -334,9 +354,8 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
             $orderRow["price"], $orderRow["quantity"]);
         $rc = $prepared_query->execute();
     }
-    if ($order_id > 0){
-        send_mail_for_new_order($business_id, $order_id);
-
+    if ($order_id == 0 || $rc === false) {
+      return -1;
     }
 
     return $order_id;
@@ -523,8 +542,10 @@ function save_notifications_for_consumer_in_business($request) {
             $notification["time_read"], $notification["notification_type_id"], $is_deleted, $notification["time_read"], $is_deleted);
         $rc = $prepared_query->execute();
     }
-
-    return ($rc);
+    if ($rc === false) {
+      return -1;
+    }
+    return (1);
 }
 
 function get_all_notifications_for_consumer($consumer_id) {
@@ -580,7 +601,10 @@ function save_all_notifications_for_consumer($request) {
         $rc = $prepared_query->execute();
     }
 
-    return ($rc);
+    if ($rc === false) {
+      return -1;
+    }
+    return (1);
 }
 
 function get_consumer_all_cc_info($consumer_id) {
@@ -614,11 +638,13 @@ function remove_cc($consumer_id, $ccDataArr) {
 
 function get_business_delivery_info($business_id) {
 
-    $query = "select delivery_section_id, section_name, title_information, section_map,  d.instruction, d.message
-            ,d.note, COALESCE(NULLIF(section_name_abrv, ''), section_name) as section_location_name
-            ,d.delivery_charge, d.delivery_time_interval_in_minutes, d.delivery_start_time, d.delivery_end_time
+    $query = "select delivery_section_id, section_name, COALESCE(NULLIF(section_name_abrv, ''), section_name)
+            as section_name_abrv
+            , section_map, d.message_to_consumers
+            , d.delivery_charge, d.delivery_time_interval_in_minutes, d.delivery_start_time, d.delivery_end_time
             from delivery_section d, business_delivery bd
-            where bd.business_id = $business_id and d.business_delivery_id = bd.business_delivery_id order by delivery_section_id ASC;";
+            where bd.business_id = $business_id and d.business_delivery_id = bd.business_delivery_id
+            order by delivery_section_id ASC;";
 
     $deliverySections = getDBresult($query);
 
@@ -714,12 +740,12 @@ function did_consumer_used_promotion($consumer_id, $business_id, $promotion_id, 
     }
 
     /*$query = "select p.promotion_code, p.business_promotion_id, o.promotion_discount_amount from  `order` o, business_promotion p
-      where o.business_id = $business_id and o.$field_name = $field_value and o.consumer_id = $consumer_id 
+      where o.business_id = $business_id and o.$field_name = $field_value and o.consumer_id = $consumer_id
       AND p.$field_name = o.$field_name; "; */
 
     $query = "select o.promotion_discount_amount, o.promotion_code, p.business_promotion_id from  `order` o
-      left join business_promotion p on p.promotion_code = o.promotion_code and p.business_id = o.business_id    
-      where o.business_id = $business_id and o.$field_name = $field_value 
+      left join business_promotion p on p.$field_name = o.$field_name and p.business_id = o.business_id
+      where o.business_id = $business_id and o.$field_name = $field_value
       AND o.promotion_discount_amount > 0 and o.consumer_id = $consumer_id";
 
     return (getDBresult($query));
@@ -738,7 +764,10 @@ do {
         case 0:
             $pos = stripos($cmd, "products_for_business");
             if ($pos !== false) {
-                $businessID = filter_input(INPUT_GET, 'businessID');
+                $businessID = filter_input(INPUT_GET, '$business_id');
+                if (empty($businessID)) {
+                    $businessID = filter_input(INPUT_GET, 'businessID');
+                }
                 $sub_businesses = filter_input(INPUT_GET, 'sub_businesses');
                 $consumerID = filter_input(INPUT_GET, 'consumerID');
                 $return_result = products_for_business($businessID, $sub_businesses, $consumerID);
@@ -759,25 +788,27 @@ do {
                     ,$request["cc_last_4_digits"], $request["data"], $request["note"], $request["consumer_delivery_id"]
                     ,$request["delivery_charge_amount"],$request["promotion_code"],$request["promotion_discount_amount"]);
                 // for backward compatibility
-                if (empty($request["subtotal"])) {
+                if ($order_id > 0) {
+                  if (empty($request["subtotal"])) {
                     $amountForPoints = $request["total"];
-                } else {
+                  } else {
                     $amountForPoints = $request["subtotal"];
-                }
-//        $pointsToAdd = round($amountForPoints,0,PHP_ROUND_HALF_UP);
-                $pointsToAdd = floor($amountForPoints);
-                save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
-                if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
+                  }
+                  // TODO
+                  $pointsToAdd = floor($amountForPoints);
+                  save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToAdd, 1);
+                  if ($request["points_redeemed"] && $request["points_redeemed"] != 0 ) {
                     // making sure the points to redeem is always negative even if it is passed as a positive number
                     $pointsToRedeem = -1 * abs($request["points_redeemed"]);
                     save_points_for_customer_in_business($request["business_id"], $request["consumer_id"], $order_id, $pointsToRedeem, 1);
-                }
-
+                  }
+                } // if $order > 0
                 $final_result["message"] = "";
                 if ($order_id > 0) {
                     $final_result["status"] = 1;
                 } else {
                     $final_result["status"] = -1;
+                    $final_result["message"] = "Order or itemes in the order were not inserted into DB";
                 }
                 $final_result["data"]["order_id"] = $order_id;
                 $final_result["data"]["points"] = $pointsToAdd;
@@ -791,8 +822,10 @@ do {
             $pos = stripos($cmd_post, "save_cc_info");
             if ($pos !== false) {
                 $status = save_cc_info($request);
-
                 $final_result["message"] = "Success";
+                if ($status < 0) {
+                  $final_result["message"] = "Error in inserting consumer cc info";
+                }
                 $final_result["status"] = $status;
                 echo json_encode($final_result);
 
