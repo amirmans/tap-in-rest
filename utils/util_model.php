@@ -67,9 +67,9 @@ function get_new_foreign_key($value_to_find, $foreign_key_array, $match_field, $
 function deleteAllProductRelatedInfo ($businessID, $to_db)
 {
 
-    set @newBusinessID = 56;
-
-
+//    set @newBusinessID = $businessID;
+//
+//
 //delete from artdoost_local_tapin.product_option where product_id in (select product_id from artdoost_local_tapin.`product` where businessID = @newBusinessID);
 //delete from artdoost_local_tapin.product_option where option_id in (select option_id from artdoost_local_tapin.`option` where business_id = @newBusinessID);
 //
@@ -87,13 +87,14 @@ function deleteAllProductRelatedInfo ($businessID, $to_db)
 //
 //delete from artdoost_local_tapin.product_option where option_id not in (select option_id from artdoost_local_tapin.`option`);
 //delete from temp_db.product_option where option_id not in (select option_id from temp_db.`option`);
+
 }
 
 
 function move_business_info($businessID, $from_db, $to_db) {
 
   deleteAllProductRelatedInfo ($businessID, $to_db);
-    
+
   $business_query = "INSERT INTO $to_db.business_customers SELECT * FROM $from_db.business_customers 
   where businessID = $businessID";
   $conn = connectToDB();
@@ -124,6 +125,7 @@ function move_business_info($businessID, $from_db, $to_db) {
         $select_to_option_category_query = "SELECT * from $to_db.`product_option_category` 
         where `business_id` = $new_business_id and `name` = \"$product_option_category_name\";";
         $to_db_result = getDBresult($select_to_option_category_query);
+        $product_option_category_name =  $conn->real_escape_string($product_option_category_name);
 
         if (empty($to_db_result)) {
             $category_desc = $resultRow['desc'];
@@ -136,6 +138,9 @@ function move_business_info($businessID, $from_db, $to_db) {
             '$category_listing_order'); ";
             $conn->query($insert_query);
             $new_product_option_category_id = mysqli_insert_id($conn);
+            if ($new_product_option_category_id == 0) {
+                echo "Error in processing Product Option Category - Something went wrong in inserting $product_option_category_name" . PHP_EOL;
+            }
 
             $product_option_category_id["to_db"] = $new_product_option_category_id;
         } else {
@@ -223,7 +228,6 @@ function move_business_info($businessID, $from_db, $to_db) {
                 echo  "$new_product_category_id is zero". PHP_EOL;
             }
 
-
             $product_category_id["to_db"] = $new_product_category_id;
         } else {
             $product_category_id["to_db"] =  $to_db_result[0]["product_category_id"];
@@ -244,6 +248,7 @@ function move_business_info($businessID, $from_db, $to_db) {
         $product_price = $resultRow['price'];
         $product_short_description = $resultRow['short_description'];
         $product_availability_status = $resultRow['availability_status'];
+        $product_name =  $conn->real_escape_string($product_name);
 
         //for insert
         $product_long_description = $resultRow['long_description'];
@@ -275,6 +280,10 @@ function move_business_info($businessID, $from_db, $to_db) {
             , '$product_listing_order');";
             $conn->query($insert_query);
             $new_product_id = mysqli_insert_id($conn);
+            if ($new_product_id == 0) {
+                echo "Error in processing Products.  Something went wrong with $new_product_id". PHP_EOL;
+            }
+
 
             $product_id["to_db"] = $new_product_id;
         } else {
