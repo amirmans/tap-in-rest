@@ -9,18 +9,41 @@ include_once(dirname(dirname(__FILE__)) . '/utils/ti_functions.php');
 include_once(dirname(dirname(__FILE__)) . '/include/consts_server.inc');
 include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 
-function send_mail_for_new_order($businessID, $orderID) {
+function notify_for_new_order($businessID, $orderID) {
+    $params['business_id']=$businessID;
+    $params['order_id']= $orderID;
+    $url = MerchantsBaseURL . "new_order_notification.php";
 
-    $ch = curl_init();
-    $merchantMailURL = MerchantsBaseURL . "mail_new_order.php";
-    // curl_setopt($ch, CURLOPT_URL, "www.artdoost.com/adminpanel/mail_new_order.php");
-    curl_setopt($ch, CURLOPT_URL, $merchantMailURL);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, "order_id=" . $orderID . "&business_id=" . $businessID);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $server_output = curl_exec($ch);
-    curl_close($ch);
-    return $server_output;
+    foreach ($params as $key => &$val) {
+        if (is_array($val))
+            $val = implode(',', $val);
+        $post_params[] = $key . '=' . urlencode($val);
+    }
+    $post_string = implode('&', $post_params);
+    $parts = parse_url($url);
+    $fp = fsockopen($parts['host'], isset($parts['port']) ? $parts['port'] : 80, $errno, $errstr, 30);
+
+    $out = "POST " . $parts['path'] . " HTTP/1.1\r\n";
+    $out.= "Host: " . $parts['host'] . "\r\n";
+    $out.= "Content-Type: application/x-www-form-urlencoded\r\n";
+    $out.= "Content-Length: " . strlen($post_string) . "\r\n";
+    $out.= "Connection: Close\r\n\r\n";
+    if (isset($post_string))
+        $out.= $post_string;
+
+    fwrite($fp, $out);
+    fclose($fp);
+
+
+    // $ch = curl_init();
+    // $merchantNotificationURL = MerchantsBaseURL . "new_order_notification.php";
+    // curl_setopt($ch, CURLOPT_URL, $merchantNotificationURL);
+    // curl_setopt($ch, CURLOPT_POST, 1);
+    // curl_setopt($ch, CURLOPT_POSTFIELDS, "order_id=" . $orderID . "&business_id=" . $businessID);
+    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    // $server_output = curl_exec($ch);
+    // curl_close($ch);
+    // return $server_output;
 }
 /*--------- database functions -----------------*/
 function connectToDB()
@@ -118,11 +141,12 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
       ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
       ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
       ,s.has_option, s.bought_with_rewards, s.more_information
-      ,q.avg as ti_rating, q.consumer_id
+      ,q.avg as ti_rating, q.consumer_id, s.neighborhood
       from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
       p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
       p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
-      p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name, biz.icon as category_icon, biz.icon as product_icon, c.listing_order
+      p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name
+      , biz.icon as category_icon, biz.icon as product_icon, c.listing_order,  biz.neighborhood
       FROM product p, product_category c, product_option o, business_customers biz
       WHERE p.businessID = $businessID AND c.business_id =  $businessID AND biz.businessID = p.businessID
       AND p.product_category_id = c.product_category_id) as s
@@ -145,19 +169,21 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
       // ORDER BY s.listing_order, category_name ASC, s.name;";
 
 
-      $product_query = "SELECT distinct product_id, category_icon, product_icon, category_name, s.businessID,  COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
-            ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
-            ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
-            ,s.has_option, s.bought_with_rewards, s.more_information
-            ,q.avg as ti_rating, q.consumer_id
+      $product_query = "SELECT distinct product_id, category_icon, product_icon, category_name, s.businessID
+            ,COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
+            ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date
+            , s.sales_end_date ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
+            ,s.has_option, s.bought_with_rewards, s.more_information, q.avg as ti_rating, q.consumer_id, s.neighborhood
             from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
             p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
             p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
-            p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name, biz.icon as category_icon, biz.icon as product_icon, c.listing_order
+            p.has_option, p.bought_with_rewards, p.more_information, p.runtime_fields_detail, c.category_name
+            , biz.icon as category_icon, biz.icon as product_icon, c.listing_order, biz.neighborhood
             FROM product p, product_category c, product_option o, business_customers biz
             WHERE p.businessID in ($sub_businesses) AND c.business_id = p.businessID AND biz.businessID = p.businessID
             AND p.product_category_id = c.product_category_id) as s
-            left join (select id, avg, consumer_id from rating where type = 2 and consumer_id = $consumer_id) as q on q.id = s.product_id
+            left join (select id, avg, consumer_id from rating where type = 2
+            and consumer_id = $consumer_id) as q on q.id = s.product_id
             ORDER BY s.listing_order, category_name ASC, s.name;";
     }
 
@@ -168,6 +194,7 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
 
     $resultArr = array();
     $category_name = "";
+    $price_reduction = 0.0;
     while ($row = mysqli_fetch_assoc($product_result)) {
         if (!empty($row["pictures"])) {
             $row["pictures"] = removeslashes($row["pictures"]);
@@ -175,6 +202,14 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
         if (empty($row["ti_rating"]) || (strcasecmp($row["ti_rating"], "Null") == 0) ) {
             $row["ti_rating"] = 0.0;
         }
+
+        if (strtolower($row["neighborhood"]) === "happy valley" ) {
+            $price_reduction = 0.10;
+            $newPrice = $row["price"] * (1- $price_reduction);
+            // $newPrice = round($newPrice ,2);
+            $row["price"] = number_format((float)$newPrice, 2, '.', '');
+        }
+
         // if (!empty($row["ti_rating"]) && $row["ti_rating"]> 4.5) {
         //     $favorite[] = $row;
         // }
@@ -183,7 +218,7 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
             $category_name = $row["category_name"];
         }
         $product_id = $row["product_id"];
-        $optionWithCategories =  get_options_for_products($product_id, $businessID, $sub_businesses);
+        $optionWithCategories =  get_options_for_products($product_id, $businessID, $sub_businesses, $price_reduction);
         //         $option_query = "select option_id, name, price, description from product_option where product_id = $product_id;";
         // //            $option_result = $conn->query($option_query);
         //         $option_result = $conn->query($option_query);
@@ -342,7 +377,7 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     $order_id = mysqli_insert_id($conn);
 
     if ($order_id > 0){
-        send_mail_for_new_order($business_id, $order_id);
+        notify_for_new_order($business_id, $order_id);
     }
 
     $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity) VALUES (?,?,?,?,?)";
@@ -464,7 +499,8 @@ function get_all_orders() {
     return (getDBresult($query));
 }
 
-function get_options_for_products($product_id, $business_id, $sub_businesses) {
+
+function get_options_for_products($product_id, $business_id, $sub_businesses, $price_reduction=0) {
     if (empty($sub_businesses) ) {
         $option_category_query = "select * from product_option_category where business_id = $business_id order by listing_order;";
     }
@@ -491,6 +527,19 @@ function get_options_for_products($product_id, $business_id, $sub_businesses) {
             $product_id = 0;
         }
         $options = getDBresult($query);
+
+        $option_with_new_prices= [];
+        if ($price_reduction > 0) {
+            foreach ($options as $option) {
+              $newOptionPrice = (1-$price_reduction) * (float)$option["price"];
+              // $newOptionPrice = round($newOptionPrice, 2);
+              $option["price"] = number_format((float)$newOptionPrice, 2, '.', '');
+
+                $option_with_new_prices[] = $option;
+            }
+            $options = $option_with_new_prices;
+        }
+
         $resultArr[$index]["option_category_name"] =  $optionCat["name"];
         $resultArr[$index]["only_choose_one"] =  $optionCat["only_choose_one"];
         $resultArr[$index]["optionData"] =  $options;
@@ -751,6 +800,27 @@ function did_consumer_used_promotion($consumer_id, $business_id, $promotion_id, 
     return (getDBresult($query));
 }
 
+function helper_order_information($status) {
+  if (empty($status)) {
+    $status ="0,1,2,3,4";
+  }
+
+ $query ="select TIMESTAMPDIFF(MINUTE,o.`date`,NOW()) as minutes_ago, DATE_FORMAT(o.`date`,\"%H:%i\") as order_time_of_today, o.order_id, biz.`name` as business_name, biz.short_name as business_short_name
+        , ba.sms_no as business_notification_sms, ba.email as business_notification_email,  o.total
+        , o.subtotal, o.consumer_id, cp.nickname as consumer_nickname, cp.email1 as consumer_email, o.cc_last_4_digits, cc.zip_code, os.`status_name` as order_status
+  from `order` o
+  left join business_customers biz on biz.businessID = o.business_id
+  left join order_status_map os on os.`status` = o.`status`
+  left join consumer_cc_info cc on cc.consumer_id = o.consumer_id
+  left join consumer_profile cp on o.consumer_id = cp.uid
+  left join business_internal_alert ba on ba.business_id = o.businessID
+  where (DATE(o.`date`) = CURDATE())
+    and o.status in ($status)
+  ORDER BY minutes_ago, biz.`name`, os.status_name;";
+
+  return (getDBresult($query));
+}
+
 // main block
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
@@ -916,7 +986,7 @@ do {
                 $product_id = filter_input(INPUT_GET, 'product_id');
                 $business_id = filter_input(INPUT_GET, 'business_id');
                 $sub_businesses = filter_input(INPUT_GET, 'sub_businesses');
-                $return_result = get_options_for_products($product_id, $business_id, $sub_businesses );
+                $return_result = get_options_for_products($product_id, $business_id, $sub_businesses, 0 );
 
                 $final_result["status"] = 1;
                 $final_result["message"] = "";
@@ -1138,10 +1208,20 @@ do {
 
                 break 2;
             }
+          case 23:
+              $pos = stripos($cmd, "order_information");
+              if ($pos !== false) {
+                  $business_id = filter_input(INPUT_GET, 'business_id');
+                  $days_before_today = filter_input(INPUT_GET, 'days_before_today');
+                  $status = filter_input(INPUT_GET, 'order_status');
+                  $result = helper_order_information($status);
+                  echo json_encode( $result);
+                  break 2;
+              }
         default:
             break 2;
     } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 23) ;
+} while ($cmdCounter < 24) ;
 ?>
