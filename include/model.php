@@ -239,6 +239,29 @@ function save_cc_info($request) {
     $conn = getDBConnection();
     $consumer_id = $request["consumer_id"];
     $name_on_card = $request["name_on_card"];
+
+
+    $query1 = "select uid from consumer_profile where uid='" . $consumer_id . "' limit 0,1";
+    $row_customers = getDBresult($query1);
+    if (count($row_customers) == 0) {
+        $return['status'] = -10;
+        $return['msg'] = "Customer id not found";
+        echo json_encode($return);
+        die;
+    } elseif ($consumer_id == 0) {
+        $return['status'] = -11;
+        $return['msg'] = "Customer id not valid";
+        echo json_encode($return);
+        die;
+    }
+
+    if ($request["zip_code"] == 0 || $request["zip_code"] == NULL) {
+        $return['status'] = -13;
+        $return['msg'] = "Please enter zip code";
+        echo json_encode($return);
+        die;
+    }
+
     if (!$name_on_card) {
         $name_on_card = "";
     }
@@ -364,6 +387,29 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
 
     $conn = connectToDB();
     $conn->set_charset("utf8");
+
+    $query1 = "select uid from consumer_profile where uid='" . $customer_id . "' limit 0,1";
+    $row_customers = getDBresult($query1);
+    if (count($row_customers) == 0) {
+        $return['status'] = -10;
+        $return['msg'] = "Customer id not found";
+        echo json_encode($return);
+        die;
+    } elseif ($customer_id == 0) {
+        $return['status'] = -11;
+        $return['msg'] = "Customer id not valid";
+        echo json_encode($return);
+        die;
+    }
+
+    $query2 = "select consumer_cc_info_id from consumer_cc_info where consumer_id='" . $customer_id . "' limit 0,1";
+    $row_cc_info = getDBresult($query2);
+    if (count($row_cc_info) == 0) {
+        $return['status'] = -12;
+        $return['msg'] = "Customer cc info not found";
+        echo json_encode($return);
+        die;
+    }
     // status
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
       points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id,
