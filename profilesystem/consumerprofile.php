@@ -34,6 +34,8 @@ try {
     // To keep the code clean, I put the API into its own class. Create an
     // instance of that class and let it handle the request.
     $api = new API($config);
+
+//    $_REQUEST = json_decode(file_get_contents('php://input'), true);
     $api->handleCommand();
 
     header('Content-type: application/json');
@@ -221,6 +223,7 @@ class API
         $email = $this->getString('email', 30, true);
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
+        $app_ver = $this->getString('app_ver', 20, true);
 
         $table_name = 'consumer_profile';
         $updateStatement = "";
@@ -270,6 +273,19 @@ class API
             $Update_executeArray[] = $zipcode;
             $valuesStatement = $valuesStatement . ", ?";
         }
+
+        if (!empty($app_ver)) {
+            $executeArray[] = $app_ver;
+            $sqlStatement = $sqlStatement . ",app_ver";
+            if (strlen($updateStatement) > 1) {
+                $updateStatement = $updateStatement . ", ";
+            }
+            $updateStatement = $updateStatement . "app_ver = ?";
+            $Update_executeArray[] = $app_ver;
+            $valuesStatement = $valuesStatement . ", ?";
+        }
+
+
       if (!empty($email)) {
         $executeArray[] = $email;
         $sqlStatement = $sqlStatement . ",email1";
