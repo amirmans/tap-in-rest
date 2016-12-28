@@ -850,6 +850,9 @@ function helper_order_information($status, $days_before_today) {
   if (empty($status)) {
     $status ="0,1,2,3,4";
   }
+  if (empty($days_before_today) || $days_before_today < 1) {
+      $days_before_today = 1;
+  }
 
  $query ="select TIMESTAMPDIFF(MINUTE,o.`date`,NOW()) as minutes_ago, DATE_FORMAT(o.`date`,\"%H:%i\") as order_time_of_today, o.order_id, biz.`name` as business_name, biz.short_name as business_short_name
         , ba.sms_no as business_notification_sms, ba.email as business_notification_email,  o.total
