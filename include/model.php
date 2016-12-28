@@ -846,7 +846,7 @@ function did_consumer_used_promotion($consumer_id, $business_id, $promotion_id, 
     return (getDBresult($query));
 }
 
-function helper_order_information($status) {
+function helper_order_information($status, $days_before_today) {
   if (empty($status)) {
     $status ="0,1,2,3,4";
   }
@@ -859,8 +859,8 @@ function helper_order_information($status) {
   left join order_status_map os on os.`status` = o.`status`
   left join consumer_cc_info cc on cc.consumer_id = o.consumer_id
   left join consumer_profile cp on o.consumer_id = cp.uid
-  left join business_internal_alert ba on ba.business_id = o.businessID
-  where (DATE(o.`date`) = CURDATE())
+  left join business_internal_alert ba on ba.business_id = o.business_id
+  where (DATE(o.`date`) > (NOW() - INTERVAL $days_before_today DAY))
     and o.status in ($status)
   ORDER BY minutes_ago, biz.`name`, os.status_name;";
 
@@ -1260,7 +1260,7 @@ do {
                   $business_id = filter_input(INPUT_GET, 'business_id');
                   $days_before_today = filter_input(INPUT_GET, 'days_before_today');
                   $status = filter_input(INPUT_GET, 'order_status');
-                  $result = helper_order_information($status);
+                  $result = helper_order_information($status, $days_before_today);
                   echo json_encode( $result);
                   break 2;
               }
