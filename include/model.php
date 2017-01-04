@@ -426,20 +426,20 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
         notify_for_new_order($business_id, $order_id);
     }
 
-    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity, consumer_note) 
+    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity, item_note) 
       VALUES (?,?,?,?,?,?)";
     foreach ($orderData as $orderRow) {
 //           $option_ids_fld = json_decode ($orderRow["options"]);
-        if (empty($orderRow["consumer_note"])) {
-          $orderRow["consumer_note"] = "";
+        if (empty($orderRow["item_note"])) {
+          $orderRow["item_note"] = "";
         }
         else {
-            $conn->real_escape_string($orderRow["consumer_note"]);
+            $conn->real_escape_string($orderRow["item_note"]);
         }
         $option_ids_fld = implode (', ',$orderRow["options"]);
         $prepared_query = $conn->prepare($prepared_stmt);
         $rc = $prepared_query->bind_param('sssdis', $order_id, $orderRow["product_id"],$option_ids_fld,
-            $orderRow["price"], $orderRow["quantity"], $orderRow["consumer_note"]);
+            $orderRow["price"], $orderRow["quantity"], $orderRow["item_note"]);
         $rc = $prepared_query->execute();
     }
     if ($order_id == 0 || $rc === false) {
