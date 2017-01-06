@@ -224,6 +224,11 @@ class API
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
         $app_ver = $this->getString('app_ver', 20, true);
+        $sms_no = $this->getString('sms_no', 12, true);
+        $use_sms = $this->getInt("use_sms", true);
+        if ($use_sms < 0) { //default valuse is 1 using sms_no is permitted
+            $use_sms = 1;
+        }
 
         $table_name = 'consumer_profile';
         $updateStatement = "";
@@ -282,6 +287,26 @@ class API
             }
             $updateStatement = $updateStatement . "app_ver = ?";
             $Update_executeArray[] = $app_ver;
+            $valuesStatement = $valuesStatement . ", ?";
+        }
+        if (!empty($sms_no)) {
+            $executeArray[] = $sms_no;
+            $sqlStatement = $sqlStatement . ",sms_no";
+            if (strlen($updateStatement) > 1) {
+                $updateStatement = $updateStatement . ", ";
+            }
+            $updateStatement = $updateStatement . "sms_no = ?";
+            $Update_executeArray[] = $sms_no;
+            $valuesStatement = $valuesStatement . ", ?";
+        }
+        if (!empty($use_sms)) {
+            $executeArray[] = $use_sms;
+            $sqlStatement = $sqlStatement . ",use_sms";
+            if (strlen($updateStatement) > 1) {
+                $updateStatement = $updateStatement . ", ";
+            }
+            $updateStatement = $updateStatement . "use_sms = ?";
+            $Update_executeArray[] = $use_sms;
             $valuesStatement = $valuesStatement . ", ?";
         }
 
@@ -480,9 +505,10 @@ class API
 
     function getInt($fieldName, $optional = false) {
         $returnVal = trim($_REQUEST[$fieldName]);
-        if (optional && empty($returnVal)) {
+
+        if (optional && empty($returnVal) && strlen($returnVal) == 0) {
             return -1;
-        } else if (empty($returnVal)) {
+        } else if (empty($returnVal) && strlen($returnVal) == 0) {
             exitWithHttpError(408, "No $fieldName was passed");
         } else {
             settype($returnVal, "int");
