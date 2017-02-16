@@ -369,6 +369,7 @@ class API
                 $result_arr['zipcode'] = $result[0]['zipcode'];
                 $result_arr['dob'] = $result[0]['dob'];
                 $result_arr['age_group'] = $result[0]['age_group'];
+                $result_arr['sms_no'] = $result[0]['sms_no'];
             }
         } else {
             $result_arr['uid'] = $userID;
