@@ -78,6 +78,8 @@ function getDBresult($query)
     return $resultArr;
 }
 
+
+
 function insertOrUpdateQuery($query)
 {
     $conn = connectToDB();
@@ -877,6 +879,26 @@ function helper_order_information($status, $days_before_today) {
   return (getDBresult($query));
 }
 
+
+function set_device_token_for_business($business_name, $device_token) {
+    $find_business_query = "select businessID from business_customers where `name` = $business_name or 
+         short_name = $business_name";
+
+    $business_info = getDBresult($find_business_query);
+    if (count($business_info) == 1) {
+        $business_id = $business_info[0]["businessID"];
+        $update_query = "update business_internal_alert set uuid = $device_token where business_id = $business_id;";
+        return (getDBresult($update_query));
+    }
+    else {
+        $return_val['status'] = -1;
+        $return_val['error_message'] = "Business name does not exist, please try again!";
+    }
+
+    return $return_val;
+
+}
+
 // main block
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
@@ -890,7 +912,7 @@ do {
         case 0:
             $pos = stripos($cmd, "products_for_business");
             if ($pos !== false) {
-                $businessID = filter_input(INPUT_GET, '$business_id');
+                $businessID = filter_input(INPUT_GET, 'business_id');
                 if (empty($businessID)) {
                     $businessID = filter_input(INPUT_GET, 'businessID');
                 }
@@ -900,6 +922,7 @@ do {
                 $final_result["message"] = "";
                 $final_result["status"] = 1;
                 $final_result["data"] = $return_result;
+                $final_result["nData"] = count($return_result);
                 echo json_encode($final_result);
 
                 break 2;
@@ -1274,10 +1297,25 @@ do {
                   echo json_encode( $result);
                   break 2;
               }
+
+        case 24:
+            $pos = stripos($cmd, "set_device_token_for_business");
+            if ($pos !== false) {
+                $business_name = filter_input(INPUT_GET, 'business_name');
+                $device_token = filter_input(INPUT_GET, 'device_token');
+                $result = set_device_token_for_business($business_name, $device_token);
+                if (count($result) == 0) {
+                    $result["status"] = 0;
+                    $result["error_message"] = "";
+                }
+                echo json_encode( $result);
+                break 2;
+            }
+
         default:
             break 2;
     } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 24) ;
+} while ($cmdCounter < 25) ;
 ?>
