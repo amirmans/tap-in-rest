@@ -85,7 +85,7 @@ function insertOrUpdateQuery($query)
     $conn = connectToDB();
 
     if ($conn->query($query) === TRUE) {
-        return 1;
+        return ($conn->affected_rows);
     } else {
         return -1;
     }
@@ -337,10 +337,16 @@ function previous_order($business_id, $consumer_id) {
 }
 
 function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount
-                    , $tax_amount, $cc_last_4_digits, $orderData, $note, $consumer_delivery_id, $delivery_charge_amount
-                    , $promotion_code, $promotion_discount_amount) {
+                    , $tax_amount, $cc_last_4_digits, $orderData, $note, $consumer_delivery_id
+                    , $promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_locations_id) {
     if (empty($note)) {
         $note = "";
+    }
+    if(empty($pd_mode)) {
+        $pd_mode = 1;
+    }
+    if (empty($pd_charge_amount)) {
+        $pd_charge_amount = 0.0;
     }
     //number of items in an order is different from number of data, a entry could have quantity of grater than 1
     $no_items_in_order = 0;
@@ -365,6 +371,9 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     if (empty($consumer_delivery_id)) {
         $consumer_delivery_id = 0;
     }
+    if (empty($pd_locations_id)) {
+        $pd_locations_id = 0;
+    }
     if (empty($promotion_code)) {
         $promotion_code = '""';
     } else {
@@ -373,13 +382,11 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     if (empty($promotion_discount_amount)) {
         $promotion_discount_amount = 0.0;
     }
-    if (empty($delivery_charge_amount)) {
-        $delivery_charge_amount = 0.0;
-    }
+
 
     // although total is given, we want to calculate it now
-    // later we will fix the bug in the client, or making the total argument redundant
-    $total = $subtotal - $promotion_discount_amount + $delivery_charge_amount + $tip_amount + $tax_amount
+    // later we will fix the bug in the client, or wont ask for  the total
+    $total = $subtotal - $promotion_discount_amount + $pd_charge_amount + $tip_amount + $tax_amount
             - points_dollar_amount;
     if ($total < 0) {
         $total = 0.0;
@@ -414,11 +421,11 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     }
     // status
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
-      points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id,
-      delivery_charge_amount, promotion_code, promotion_discount_amount)
+      points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id
+      , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, pd_locations_id)
     Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
-      \"$cc_last_4_digits\", 1, $no_items_in_order, \"$note\", now(), $consumer_delivery_id, $delivery_charge_amount,
-      $promotion_code, $promotion_discount_amount);";
+      \"$cc_last_4_digits\", 1, $no_items_in_order, \"$note\", now(), $consumer_delivery_id
+      ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_locations_id);";
 
     $conn->query($insert_query);
 
@@ -741,34 +748,37 @@ function remove_cc($consumer_id, $ccDataArr) {
 
 
 function get_business_delivery_info($business_id) {
+    $all_delivery_info = array();
 
-    $query = "select delivery_section_id, section_name, COALESCE(NULLIF(section_name_abrv, ''), section_name)
-            as section_name_abrv
-            , section_map, d.message_to_consumers
-            , d.delivery_charge, d.delivery_time_interval_in_minutes, d.delivery_start_time, d.delivery_end_time
-            from delivery_section d, business_delivery bd
-            where bd.business_id = $business_id and d.business_delivery_id = bd.business_delivery_id
-            order by delivery_section_id ASC;";
+    $all_delivery_info['status'] = 0;
+    $all_delivery_info['message'] = '';
 
-    $deliverySections = getDBresult($query);
+    $query = "select * from delivery where business_id = $business_id;";
 
-    $index = 0;
-    foreach ($deliverySections as $section) {
-        $delivery_section_id = $section["delivery_section_id"];
+    $delivery_result = getDBresult($query);
+    $table_id = $delivery_result[0]["table_id"];
+    if ($table_id > 0)
+    {
+        $query = "select * from delivery_tables where delivery_table_id = $table_id;";
+        $all_delivery_info['table'] =  getDBresult($query)[0];
 
-        $query = "select delivery_section_location_id,  COALESCE( NULLIF(location_abrv,''), location_name) as location_name,
-            note  from delivery_section_locations where
-            delivery_section_id = $delivery_section_id order by delivery_section_location_id ASC;";
+    }
+    $location_id = $delivery_result[0]["delivery_main_location_id"];
+    if ($location_id > 0)
+    {
+        $query = "select * from delivery_main_location where delivery_main_location_id = $location_id;";
+        $location_info =  getDBresult($query)[0];
+        $all_delivery_info['location_info'] = $location_info;
+        $main_location_id = $location_info['delivery_main_location_id'];
+        $query = "select *, COALESCE( NULLIF(location_abrv,''), location_name) as location_name 
+          from delivery_locations where delivery_main_location_id  = $main_location_id order by location_name ASC;";
+        $all_delivery_info['location_info']['locations'] = getDBresult($query);
 
-        $locations = getDBresult($query);
-
-        $deliverySections[$index]["locations_in_section"]  =  $locations;
-        $index++;
     }
 
-    return ($deliverySections);
-}
 
+    return ($all_delivery_info);
+}
 
 function save_consumer_delivery($request) {
     $consumer_id = $request["consumer_id"];
@@ -834,6 +844,46 @@ function get_business_overall_delivery_info($business_id) {
 }
 
 
+function get_pickup_locations_for_consumer_order($device_token) {
+    $status = ORDER_STATUS_DONE;
+    $query = "select o.* from `order` o, consumer_profile c where c.device_token = '$device_token'
+      and o.consumer_id = c.uid and o.pickup = 1 and o.status != $status;";
+
+    $final_result = array();
+    $result =  getDBresult($query);
+    if (count($result)) {
+        $business_id = $result[0]['business_id'];
+        $query = "select * from pickup_locations where business_id = $business_id";
+        $locations_for_order = getDBresult($query);
+        $order_id = $result[0]['order_id'];
+        $locations['order_id'] = $order_id;
+        $locations['locations'] = $locations_for_order;
+
+    }
+
+    $final_result['status'] = 0;
+    $final_result['message'] = 0;
+    $final_result['data'] = $locations ;
+
+    return ($final_result);
+}
+
+function set_order_pickup_location($order_id, $pickup_location_id) {
+    $updateQuery = "update `order` set pickup_locations_id = $pickup_location_id where order_id = $order_id;";
+
+    $return_result['status'] = 0;
+    $return_result['message'] = '';
+
+    $update_result = insertOrUpdateQuery($updateQuery);
+
+    if (insertOrUpdateQuery($update_result) < 1) {
+        $return_result['message'] = "Existing information!";
+    }
+
+    return $return_result;
+}
+
+
 function did_consumer_used_promotion($consumer_id, $business_id, $promotion_id, $promotion_code) {
     if (empty($promotion_id)) {
         $field_name = "promotion_code";
@@ -881,14 +931,33 @@ function helper_order_information($status, $days_before_today) {
 
 
 function set_device_token_for_business($business_name, $device_token) {
-    $find_business_query = "select businessID from business_customers where `name` = $business_name or 
-         short_name = $business_name";
+    $return_val['error_message'] = "";
+    $return_val['status'] = 0;
+
+    $find_business_query = "select businessID, short_name, `name` from business_customers 
+        where `name` = \"$business_name\" or short_name = \"$business_name\"";
 
     $business_info = getDBresult($find_business_query);
     if (count($business_info) == 1) {
         $business_id = $business_info[0]["businessID"];
-        $update_query = "update business_internal_alert set uuid = $device_token where business_id = $business_id;";
-        return (getDBresult($update_query));
+        $business_short_name = $business_info[0]["short_name"];
+        $business_name = $business_info[0]["name"];
+        $update_query = "update business_internal_alert set uuid = '$device_token' where business_id = $business_id;";
+        $update_status = insertOrUpdateQuery($update_query);
+        if ($update_status < 0) {
+            $return_val['error_message'] = "Error in update query!";
+            $return_val['status'] = -2;
+        }
+        else {
+            $return_val['data']['business_name'] = $business_name;
+            $return_val['data']['business_short_name'] = $business_short_name;
+            $return_val['data']['business_id'] = $business_id;
+            $return_val['data']['num_row_effected'] = $update_status;
+        }
+    }
+    else if (count($business_info) > 1) {
+        $return_val ['status']  = -2;
+        $return_val['error_message'] = "here are multiple businesses with the same name, please contact Tap In!";
     }
     else {
         $return_val['status'] = -1;
@@ -932,10 +1001,15 @@ do {
             $cmd_post = $request["cmd"];
             $pos = stripos($cmd_post, "save_order");
             if ($pos !== false) {
+                // for backword comaptibility:
+                if (isset($request["delivery_charge_amount"])) {
+                    $request["pd_charge_amount"] = $request["delivery_charge_amount"];
+                }
                 $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"]
                     ,$request["subtotal"], $request["tip_amount"], $request["points_dollar_amount"], $request["tax_amount"]
                     ,$request["cc_last_4_digits"], $request["data"], $request["note"], $request["consumer_delivery_id"]
-                    ,$request["delivery_charge_amount"],$request["promotion_code"],$request["promotion_discount_amount"]);
+                    ,$request["promotion_code"],$request["promotion_discount_amount"]
+                    ,$request["pd_mode"], $request["pd_charge_amount"], $request["pd_locations_id"]);
                 // for backward compatibility
                 if ($order_id > 0) {
                   if (empty($request["subtotal"])) {
@@ -957,7 +1031,7 @@ do {
                     $final_result["status"] = 1;
                 } else {
                     $final_result["status"] = -1;
-                    $final_result["message"] = "Order or itemes in the order were not inserted into DB";
+                    $final_result["message"] = "Order or items in the order were not inserted into DB";
                 }
                 $final_result["data"]["order_id"] = $order_id;
                 $final_result["data"]["points"] = $pointsToAdd;
@@ -1207,14 +1281,9 @@ do {
             $pos = stripos($cmd, "get_business_delivery_info");
             if ($pos !== false) {
                 $business_id = filter_input(INPUT_GET, 'business_id');
-                $final_result = [];
                 $result = get_business_delivery_info($business_id);
-                $final_result["status"] = 0;
-                $final_result["data"] = $result;
-                if (!$result) {
-                    $final_result["status"] = -10;
-                }
-                echo json_encode($final_result);
+
+                echo json_encode($result);
 
                 break 2;
             }
@@ -1304,6 +1373,19 @@ do {
                 $business_name = filter_input(INPUT_GET, 'business_name');
                 $device_token = filter_input(INPUT_GET, 'device_token');
                 $result = set_device_token_for_business($business_name, $device_token);
+//                if (count($result) == 0) {
+//                    $result["status"] = 0;
+//                    $result["error_message"] = "";
+//                }
+                echo json_encode( $result);
+                break 2;
+            }
+
+        case 25:
+            $pos = stripos($cmd, "get_pickup_locations_for_consumer_order");
+            if ($pos !== false) {
+                $device_token = filter_input(INPUT_GET, 'device_token');
+                $result = get_pickup_locations_for_consumer_order($device_token);
                 if (count($result) == 0) {
                     $result["status"] = 0;
                     $result["error_message"] = "";
@@ -1312,10 +1394,22 @@ do {
                 break 2;
             }
 
+        case 26:
+            $pos = stripos($cmd, "set_order_pickup_location");
+            if ($pos !== false) {
+                $order_id = filter_input(INPUT_GET, 'order_id');
+                $pickup_location_id = filter_input(INPUT_GET, 'pickup_location_id');
+                $result = set_order_pickup_location($order_id, $pickup_location_id);
+
+                echo json_encode( $result);
+                break 2;
+            }
+
+
         default:
             break 2;
     } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 25) ;
+} while ($cmdCounter < 27) ;
 ?>
