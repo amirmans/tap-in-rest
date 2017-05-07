@@ -14,6 +14,7 @@ function notify_for_new_order($businessID, $orderID) {
     $params['order_id']= $orderID;
     $url = MerchantsBaseURL . "new_order_notification.php";
 
+    $post_params = array();
     foreach ($params as $key => &$val) {
         if (is_array($val))
             $val = implode(',', $val);
@@ -58,7 +59,7 @@ function connectToDB()
 function getDBConnection()
 {
     $conn = $GLOBALS['conn'];
-    if ($conn == nil) {
+    if ($conn == 0) {
         $conn = connectToDB();
     }
     $GLOBALS['conn'] = $conn;
@@ -92,7 +93,6 @@ function insertOrUpdateQuery($query)
 }
 
 function get_all_businesses_info($consumer_id) {
-    $tableName = 'business_customers';
     if ($consumer_id) {
         $query = "select distinct a.*, if (r.avg is null, 0, r.avg)
         as ti_rating from business_customers a
@@ -286,13 +286,13 @@ function save_cc_info($request) {
   VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
   name_on_card = ?, cc_no = ?, expiration_date = ?, cvv = ?, zip_code = ?, card_type = ?, `default` = ?;";
     $prepared_query = $conn->prepare($prepared_stmt);
-    $rc = $prepared_query->bind_param('sssssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
+    $rc1 = $prepared_query->bind_param('sssssssssssssss', $consumer_id, $name_on_card, $request["cc_no"]
         ,$request["expiration_date"], $request["cvv"], $request["zip_code"], $card_type, $default, $name_on_card, $request["cc_no"]
         , $request["expiration_date"], $request["cvv"], $request["zip_code"], $card_type, $default);
 
-    $rc = $prepared_query->execute();
+    $rc2 = $prepared_query->execute();
 
-    if ($rc === false) {
+    if ( ($rc1 === false) || ($rc2===false)) {
       return -1;
     }
     return 0;
@@ -336,10 +336,10 @@ function previous_order($business_id, $consumer_id) {
     return ($resultWithOptions);
 }
 
-function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount
+function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amount, $points_dollar_amount
                     , $tax_amount, $cc_last_4_digits, $orderData, $note, $consumer_delivery_id
                     , $promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount
-                    , $pd_locations_id, $pd_time) {
+                    , $pd_locations_id, $pd_time, $pd_instruction) {
     if (empty($note)) {
         $note = "";
     }
@@ -386,11 +386,13 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     if (empty($pd_time)) {
         $pd_time = now();
     }
-
+    if (empty($pd_instruction)) {
+        $pd_instruction = "";
+    }
     // although total is given, we want to calculate it now
     // later we will fix the bug in the client, or wont ask for  the total
     $total = $subtotal - $promotion_discount_amount + $pd_charge_amount + $tip_amount + $tax_amount
-            - points_dollar_amount;
+            - $points_dollar_amount;
     if ($total < 0) {
         $total = 0.0;
     }
@@ -425,10 +427,11 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     // status
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
       points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id
-      , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, pd_locations_id, pd_time)
+      , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, pd_locations_id, pd_time, pd_instruction)
     Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
-      \"$cc_last_4_digits\", 1, $no_items_in_order, \"$note\", now(), $consumer_delivery_id
-      ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_locations_id, '$pd_time');";
+      '$cc_last_4_digits', 1, $no_items_in_order, '$note', now(), $consumer_delivery_id
+      ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_locations_id, '$pd_time'
+      , '$pd_instruction');";
 
     $conn->query($insert_query);
 
@@ -437,7 +440,7 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
     if ($order_id > 0){
         notify_for_new_order($business_id, $order_id);
     }
-
+    $rc1 =0; $rc2=0;
     $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity, item_note) 
       VALUES (?,?,?,?,?,?)";
     foreach ($orderData as $orderRow) {
@@ -450,11 +453,11 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
         }
         $option_ids_fld = implode (', ',$orderRow["options"]);
         $prepared_query = $conn->prepare($prepared_stmt);
-        $rc = $prepared_query->bind_param('sssdis', $order_id, $orderRow["product_id"],$option_ids_fld,
+        $rc1 = $prepared_query->bind_param('sssdis', $order_id, $orderRow["product_id"],$option_ids_fld,
             $orderRow["price"], $orderRow["quantity"], $orderRow["item_note"]);
-        $rc = $prepared_query->execute();
+        $rc2 = $prepared_query->execute();
     }
-    if ($order_id == 0 || $rc === false) {
+    if ($order_id == 0 || $rc1 === false || $rc2 === false) {
       return -1;
     }
 
@@ -462,13 +465,12 @@ function save_order($business_id, $customer_id, $total, $subtotal, $tip_amount, 
 }
 
 function save_points_for_customer_in_business($businessID, $consumerID, $orderID, $points, $pointReason) {
+    $time_field_name = "time_earned";
     if ($points < 0)
     {
         $time_field_name = "time_redeemed";
     }
-    else {
-        $time_field_name = "time_earned";
-    }
+
     $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
   VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
     getDBresult($insert_query);
@@ -639,7 +641,8 @@ function save_notifications_for_consumer_in_business($request) {
     $business_id = $request["business_id"];
     // $deleteQuery = "DELETE from notification where consumer_id =  $consumer_id and business_id = $business_id;";
     // getDBresult($deleteQuery);
-
+    $rc1 = 0;
+    $rc2 = 0;
     // the client app, always has the notification ID, since it always gets its the list of notifications from the server, which includes notification_id
     $prepared_statement = "Insert into notification (notification_id, business_id, consumer_id, image, message, time_sent, time_read, notification_type_id, is_deleted)
       values(?,?,?,?,?,?,?,?,?)
@@ -651,12 +654,12 @@ function save_notifications_for_consumer_in_business($request) {
             $is_deleted = $notification["is_deleted"];
         }
         $prepared_query = $conn->prepare($prepared_statement);
-        $rc = $prepared_query->bind_param('ssssssssisi',
+        $rc1 = $prepared_query->bind_param('ssssssssisi',
             $notification["notification_id"], $business_id, $consumer_id, $notification["image"], $notification["message"], $notification["time_sent"],
             $notification["time_read"], $notification["notification_type_id"], $is_deleted, $notification["time_read"], $is_deleted);
-        $rc = $prepared_query->execute();
+        $rc2 = $prepared_query->execute();
     }
-    if ($rc === false) {
+    if ($rc1 === false || $rc2 === false) {
       return -1;
     }
     return (1);
@@ -691,6 +694,8 @@ function save_all_notifications_for_consumer($request) {
     //     $notification["time_read"],$notification_type);
     //   $rc = $prepared_query->execute();
     // }
+    $rc1 = 0;
+    $rc2 = 0;
     $conn = getDBConnection();
 
     $consumer_id = $request["consumer_id"];
@@ -708,14 +713,14 @@ function save_all_notifications_for_consumer($request) {
             $is_deleted = $notification["is_deleted"];
         }
         $prepared_query = $conn->prepare($prepared_statement);
-        $rc = $prepared_query->bind_param('ssssssssisi',
+        $rc1 = $prepared_query->bind_param('ssssssssisi',
             $notification["notification_id"],  $notification["business_id"], $consumer_id, $notification["image"], $notification["message"],
             $notification["time_sent"], $notification["time_read"], $notification["notification_type_id"], $is_deleted,
             $notification["time_read"], $is_deleted);
-        $rc = $prepared_query->execute();
+        $rc2 = $prepared_query->execute();
     }
 
-    if ($rc === false) {
+    if ( ($rc1 === false) || ($rc2 === false)) {
       return -1;
     }
     return (1);
@@ -740,7 +745,7 @@ function remove_cc($consumer_id, $ccDataArr) {
         $cvv = $ccData["cvv"];
         $zip = $ccData["zip_code"];
 
-        $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= \"$exp_date\"
+        $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= '$exp_date'
         and cvv=$cvv and zip_code=$zip;";
 
         getDBresult($query);
@@ -773,9 +778,14 @@ function get_business_delivery_info($business_id) {
         $location_info =  getDBresult($query)[0];
         $all_delivery_info['location_info'] = $location_info;
         $main_location_id = $location_info['delivery_main_location_id'];
-        $query = "select *, COALESCE( NULLIF(location_abrv,''), location_name) as location_name 
-          from delivery_locations where delivery_main_location_id  = $main_location_id order by location_name ASC;";
+//        $query = "select *, COALESCE( NULLIF(location_abrv,''), location_name) as location_name
+//          from delivery_locations where delivery_main_location_id  = $main_location_id order by location_name ASC;";
+
+        $query = "select COALESCE( NULLIF(location_abrv,''), location_name) as location_name , note, location_address
+          from delivery_locations where delivery_main_location_id = $main_location_id order by location_name ASC;";
+
         $all_delivery_info['location_info']['locations'] = getDBresult($query);
+//        $all_delivery_info['location_info']['delivery_locations_charge'] = "2";
 
     }
 
@@ -815,9 +825,9 @@ function save_consumer_delivery($request) {
         (consumer_id, delivery_time, delivery_address, delivery_address_name, `default`, delivery_instruction)
       values(?,?,?,?,?,?)";
     $prepared_query = $conn->prepare($prepared_statement);
-    $rc = $prepared_query->bind_param('ssssss',
+    $prepared_query->bind_param('ssssss',
         $consumer_id, $delivery_time, $delivery_address,$delivery_address_name, $default, $delivery_instruction);
-    $rc = $prepared_query->execute();
+    $prepared_query->execute();
 
 //      $insert_query = "INSERT INTO consumer_delivery
 //        (consumer_id, delivery_time, delivery_address, delivery_address_name, `default`, delivery_instruction)
@@ -839,20 +849,22 @@ function get_consumer_latest_delivery_info($consumer_id) {
 }
 
 
-function get_business_overall_delivery_info($business_id) {
-    $query = "select * from business_delivery
-      where business_id = $business_id limit 1;";
-
-    return (getDBresult($query));
-}
+//function get_business_overall_delivery_info($business_id) {
+//    $query = "select * from business_delivery
+//      where business_id = $business_id limit 1;";
+//
+//    return (getDBresult($query));
+//}
 
 
 function get_pickup_locations_for_consumer_order($device_token) {
     $status = ORDER_STATUS_DONE;
+    $pickup_mode = PICKUP_LOCATION;
     $query = "select o.* from `order` o, consumer_profile c where c.device_token = '$device_token'
-      and o.consumer_id = c.uid and o.pickup = 1 and o.status != $status;";
+      and o.consumer_id = c.uid and o.pd_mode = $pickup_mode and o.status != $status;";
 
     $final_result = array();
+    $locations = array();
     $result =  getDBresult($query);
     if (count($result)) {
         $business_id = $result[0]['business_id'];
@@ -871,8 +883,16 @@ function get_pickup_locations_for_consumer_order($device_token) {
     return ($final_result);
 }
 
+/**
+ * @param $order_id
+ * @param $pickup_location_id
+ * @return mixed - success/failure and a message to display if it is a failure
+ * Note:
+ *  No validation is performed to guarantee the pd_type is correct for the given order.
+ *  Validation should be done on the client level
+ */
 function set_order_pickup_location($order_id, $pickup_location_id) {
-    $updateQuery = "update `order` set pickup_locations_id = $pickup_location_id where order_id = $order_id;";
+    $updateQuery = "update `order` set pd_locations_id = $pickup_location_id where order_id = $order_id;";
 
     $return_result['status'] = 0;
     $return_result['message'] = '';
@@ -916,7 +936,7 @@ function helper_order_information($status, $days_before_today) {
       $days_before_today = 1;
   }
 
- $query ="select TIMESTAMPDIFF(MINUTE,o.`date`,NOW()) as minutes_ago, DATE_FORMAT(o.`date`,\"%H:%i\") as order_time_of_today, o.order_id, biz.`name` as business_name, biz.short_name as business_short_name
+ $query ="select TIMESTAMPDIFF(MINUTE,o.`date`,NOW()) as minutes_ago, DATE_FORMAT(o.`date`,'%H:%i') as order_time_of_today, o.order_id, biz.`name` as business_name, biz.short_name as business_short_name
         , ba.sms_no as business_notification_sms, ba.email as business_notification_email,  o.total
         , o.subtotal, o.consumer_id, cp.nickname as consumer_nickname, cp.email1 as consumer_email, o.cc_last_4_digits, cc.zip_code, os.`status_name` as order_status
   from `order` o
@@ -938,7 +958,7 @@ function set_device_token_for_business($business_name, $device_token) {
     $return_val['status'] = 0;
 
     $find_business_query = "select businessID, short_name, `name` from business_customers 
-        where `name` = \"$business_name\" or short_name = \"$business_name\"";
+        where `name` = '$business_name' or short_name = '$business_name'";
 
     $business_info = getDBresult($find_business_query);
     if (count($business_info) == 1) {
@@ -971,6 +991,54 @@ function set_device_token_for_business($business_name, $device_token) {
 
 }
 
+
+function isThisBusinessCustomer($businessName) {
+    $query = "SELECT * FROM business_customers WHERE name = '$businessName' and active = 1;";
+
+    return getDBresult($query);
+
+}
+
+function getBusinessInfoWithConsumerRating($business_id, $consumer_id) {
+
+    if (empty($business_id) ) {
+        $business_id = 0;
+    }
+    if (empty ($consumer_id) ) {
+        $consumer_id = 0;
+    }
+    $week_day = date('N', time());
+    if ($week_day > 6) $week_day = 0;
+
+    if ($consumer_id) {
+        $select_statement = "select distinct a.*
+      , p.promotion_discount_amount
+      , COALESCE(p.promotion_message, \"\") as promotion_message
+      , COALESCE(p.promotion_code, \"\") as promotion_code
+      , COALESCE(p.business_promotion_id, 0) as business_promotion_id
+      , b.opening_time, b.closing_time, if (r.avg is null, 0.0, r.avg) as ti_rating from business_customers a
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = $week_day )
+      left join (select id, avg, consumer_id from rating where type = 1 and consumer_id = $consumer_id) r on r.id = a.businessID
+      left join (select * from business_promotion) p on p.business_id = a.businessID
+      where a.active = 1;";
+    } else {
+        // passing 0 as as ti_rating for now.  Deleting this field in the businessCustomer table
+        $select_statement = "select distinct a.*
+      , p.promotion_discount_amount
+      , COALESCE(p.promotion_message, \"\") as promotion_message
+      , COALESCE(p.promotion_code, \"\") as promotion_code
+      , COALESCE(p.business_promotion_id, 0) as business_promotion_id
+      , b.opening_time, b.closing_time, (0) as ti_rating from business_customers a
+      left join  opening_hours b on (b.businessID = a.businessID and b.weekday_id = $week_day )
+      left join (select id, avg, consumer_id from rating where type = 1) r on r.id = a.businessID
+      left join (select * from business_promotion) p on p.business_id = a.businessID
+      where a.active = 1;";
+    }
+
+    return getDBresult($select_statement);
+
+}
+
 // main block
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
@@ -996,9 +1064,8 @@ do {
                 $final_result["data"] = $return_result;
                 $final_result["nData"] = count($return_result);
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
         case 1:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1008,11 +1075,14 @@ do {
                 if (isset($request["delivery_charge_amount"])) {
                     $request["pd_charge_amount"] = $request["delivery_charge_amount"];
                 }
-                $order_id = save_order($request["business_id"], $request["consumer_id"], $request["total"]
+                $pointsToAdd = 0;
+
+                $order_id = save_order($request["business_id"], $request["consumer_id"]/*, $request["total"]*/
                     ,$request["subtotal"], $request["tip_amount"], $request["points_dollar_amount"], $request["tax_amount"]
                     ,$request["cc_last_4_digits"], $request["data"], $request["note"], $request["consumer_delivery_id"]
                     ,$request["promotion_code"],$request["promotion_discount_amount"]
-                    ,$request["pd_mode"], $request["pd_charge_amount"], $request["pd_locations_id"], $request['pd_time']);
+                    ,$request["pd_mode"], $request["pd_charge_amount"], $request["pd_locations_id"], $request['pd_time']
+                    , $request['pd_instruction']);
                 // for backward compatibility
                 if ($order_id > 0) {
                   if (empty($request["subtotal"])) {
@@ -1042,6 +1112,8 @@ do {
 
                 break 2;
             }
+            break;
+
         case 2:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1054,9 +1126,9 @@ do {
                 }
                 $final_result["status"] = $status;
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 3:
             $pos = stripos($cmd, "previous_order");
             if ($pos !== false) {
@@ -1067,9 +1139,9 @@ do {
                 $final_result["status"] = 1;
                 $final_result["data"] = $return_result;
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 4:
             $pos = stripos($cmd, "save_points");
             if ($pos !== false) {
@@ -1087,9 +1159,9 @@ do {
                     $final_result["points_id"] = $return_result;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 5:
             $pos = stripos($cmd, "setRatings");
             if ($pos !== false) {
@@ -1100,9 +1172,9 @@ do {
                 $rating = filter_input(INPUT_GET, 'rating');
                 $return_result = ti_setRating($type, $id, $rating, $consumer_id);
                 echo json_encode($return_result);
-
-                break 2;
             }
+            break;
+
         case 6:
             $pos = stripos($cmd, "get_all_points");
             if ($pos !== false) {
@@ -1124,17 +1196,17 @@ do {
                     $final_result["data"] = $return_result;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 7:
             $pos = stripos($cmd, "get_all_orders");
             if ($pos !== false) {
                 $return_result = get_all_orders();
                 echo json_encode($return_result);
-
-                break 2;
             }
+            break;
+
         case 8:
             $pos = stripos($cmd, "get_options_for_products");
             if ($pos !== false) {
@@ -1151,9 +1223,9 @@ do {
 
 
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 9:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1164,9 +1236,9 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 10:
             $pos = stripos($cmd, "get_notifications_for_consumer_in_business");
             if ($pos !== false) {
@@ -1178,9 +1250,9 @@ do {
                 $final_result["status"] = 1;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 11:
             $pos = stripos($cmd, "get_all_notifications_for_consumer");
             if ($pos !== false) {
@@ -1192,9 +1264,9 @@ do {
                 $final_result["message"] = "";
 
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 12:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1205,9 +1277,9 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 13:
             $pos = stripos($cmd, "get_average_wait_time_for_business");
             if ($pos !== false) {
@@ -1217,9 +1289,9 @@ do {
                 $final_result["status"] = 0;
                 $final_result["data"] = $return_code[0];
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 14:
             $pos = stripos($cmd, "get_all_businesses_info");
             if ($pos !== false) {
@@ -1232,9 +1304,9 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 15:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1245,9 +1317,9 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 16:
             $pos = stripos($cmd, "get_consumer_default_cc");
             if ($pos !== false) {
@@ -1262,9 +1334,9 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 17:
             $pos = stripos($cmd, "get_consumer_all_cc_info");
             if ($pos !== false) {
@@ -1277,9 +1349,9 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 18:
             $pos = stripos($cmd, "get_business_delivery_info");
             if ($pos !== false) {
@@ -1287,9 +1359,10 @@ do {
                 $result = get_business_delivery_info($business_id);
 
                 echo json_encode($result);
-
                 break 2;
             }
+            break;
+
         case 19:
             $request = json_decode(file_get_contents('php://input'), TRUE);
             $cmd_post = $request["cmd"];
@@ -1310,6 +1383,8 @@ do {
 
                 break 2;
             }
+            break; // to get rid of warning
+
         case 20:
             $pos = stripos($cmd, "get_consumer_latest_delivery_info");
             if ($pos !== false) {
@@ -1322,9 +1397,9 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
-
-                break 2;
             }
+            break;
+
         case 21:
             /**
              * if discount_amount > 0 is found and pass, it indicates consumer has used this promotion
@@ -1341,24 +1416,24 @@ do {
                 $final_result["data"] = $result;
 
                 echo json_encode($final_result);
-
-                break 2;
             }
-        case 22:
-            $pos = stripos($cmd, "get_business_overall_delivery_info");
-            if ($pos !== false) {
-                $business_id = filter_input(INPUT_GET, 'business_id');
-                $final_result = [];
-                $result = get_business_overall_delivery_info($business_id);
-                $final_result["status"] = 0;
-                $final_result["data"] = $result;
-                if (!$result) {
-                    $final_result["status"] = -10;
-                }
-                echo json_encode($final_result);
+            break;
 
-                break 2;
-            }
+//        case 22:
+//            $pos = stripos($cmd, "get_business_overall_delivery_info");
+//            if ($pos !== false) {
+//                $business_id = filter_input(INPUT_GET, 'business_id');
+//                $final_result = [];
+//                $result = get_business_overall_delivery_info($business_id);
+//                $final_result["status"] = 0;
+//                $final_result["data"] = $result;
+//                if (!$result) {
+//                    $final_result["status"] = -10;
+//                }
+//                echo json_encode($final_result);
+//
+//                break 2;
+//            }
           case 23:
               $pos = stripos($cmd, "order_information");
               if ($pos !== false) {
@@ -1367,8 +1442,8 @@ do {
                   $status = filter_input(INPUT_GET, 'order_status');
                   $result = helper_order_information($status, $days_before_today);
                   echo json_encode( $result);
-                  break 2;
               }
+              break;
 
         case 24:
             $pos = stripos($cmd, "set_device_token_for_business");
@@ -1381,8 +1456,8 @@ do {
 //                    $result["error_message"] = "";
 //                }
                 echo json_encode( $result);
-                break 2;
             }
+            break;
 
         case 25:
             $pos = stripos($cmd, "get_pickup_locations_for_consumer_order");
@@ -1394,8 +1469,10 @@ do {
                     $result["error_message"] = "";
                 }
                 echo json_encode( $result);
+
                 break 2;
             }
+            break;
 
         case 26:
             $pos = stripos($cmd, "set_order_pickup_location");
@@ -1407,12 +1484,37 @@ do {
                 echo json_encode( $result);
                 break 2;
             }
+            break;
+
+
+        case 27:
+            $pos = stripos($cmd, "isThisBusinessCustomer");
+            if ($pos !== false) {
+                $business_name = filter_input(INPUT_GET, 'businessName');
+                $result = isThisBusinessCustomer($business_name);
+
+                echo json_encode( $result);
+                break 2;
+            }
+            break;
+
+        case 28:
+            $pos = stripos($cmd, "getBusinessInfoWithConsumerRating");
+            if ($pos !== false) {
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+                $result = getBusinessInfoWithConsumerRating($business_id, $consumer_id);
+
+                echo json_encode( $result);
+                break 2;
+            }
+            break;
 
 
         default:
-            break 2;
+            break;
     } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 27) ;
-?>
+} while ($cmdCounter < 29) ;
+
