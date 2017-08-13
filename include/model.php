@@ -441,7 +441,7 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
         notify_for_new_order($business_id, $order_id);
     }
     $rc1 =0; $rc2=0;
-    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity, item_note) 
+    $prepared_stmt = "INSERT INTO order_item (order_id, product_id, option_ids, price, quantity, item_note)
       VALUES (?,?,?,?,?,?)";
     foreach ($orderData as $orderRow) {
 //           $option_ids_fld = json_decode ($orderRow["options"]);
@@ -957,7 +957,7 @@ function set_device_token_for_business($business_name, $device_token) {
     $return_val['error_message'] = "";
     $return_val['status'] = 0;
 
-    $find_business_query = "select businessID, short_name, `name` from business_customers 
+    $find_business_query = "select businessID, short_name, `name` from business_customers
         where `name` = '$business_name' or short_name = '$business_name'";
 
     $business_info = getDBresult($find_business_query);
@@ -1359,7 +1359,7 @@ do {
                 $result = get_business_delivery_info($business_id);
 
                 echo json_encode($result);
-                break 2;
+                break ;
             }
             break;
 
@@ -1488,7 +1488,7 @@ do {
 
 
         case 27:
-            $pos = stripos($cmd, "isThisBusinessCustomer");
+            $pos = stripos($cmd, "getBusinessInfoWithName");
             if ($pos !== false) {
                 $business_name = filter_input(INPUT_GET, 'businessName');
                 $result = isThisBusinessCustomer($business_name);
@@ -1504,8 +1504,11 @@ do {
                 $business_id = filter_input(INPUT_GET, 'business_id');
                 $consumer_id = filter_input(INPUT_GET, 'consumer_id');
                 $result = getBusinessInfoWithConsumerRating($business_id, $consumer_id);
+                $final_result = array();
+                $final_result["status"] = 0;
+                $final_result["data"] = $result;
 
-                echo json_encode( $result);
+                echo json_encode( $final_result);
                 break 2;
             }
             break;
