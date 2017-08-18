@@ -384,7 +384,7 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
         $promotion_discount_amount = 0.0;
     }
     if (empty($pd_time)) {
-        $pd_time = now();
+        $pd_time = date('H:i');
     }
     if (empty($pd_instruction)) {
         $pd_instruction = "";
@@ -1126,6 +1126,8 @@ do {
                 }
                 $final_result["status"] = $status;
                 echo json_encode($final_result);
+
+                break;
             }
             break;
 
@@ -1139,6 +1141,8 @@ do {
                 $final_result["status"] = 1;
                 $final_result["data"] = $return_result;
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1159,6 +1163,8 @@ do {
                     $final_result["points_id"] = $return_result;
                 }
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1172,6 +1178,8 @@ do {
                 $rating = filter_input(INPUT_GET, 'rating');
                 $return_result = ti_setRating($type, $id, $rating, $consumer_id);
                 echo json_encode($return_result);
+
+                break 2;
             }
             break;
 
@@ -1196,6 +1204,8 @@ do {
                     $final_result["data"] = $return_result;
                 }
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1204,6 +1214,7 @@ do {
             if ($pos !== false) {
                 $return_result = get_all_orders();
                 echo json_encode($return_result);
+                break 2;
             }
             break;
 
@@ -1223,6 +1234,8 @@ do {
 
 
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1236,6 +1249,8 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1250,6 +1265,8 @@ do {
                 $final_result["status"] = 1;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1264,6 +1281,8 @@ do {
                 $final_result["message"] = "";
 
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1277,6 +1296,8 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1289,6 +1310,8 @@ do {
                 $final_result["status"] = 0;
                 $final_result["data"] = $return_code[0];
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1304,6 +1327,7 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
+                break 2;
             }
             break;
 
@@ -1317,6 +1341,8 @@ do {
                 $final_result["status"] = $return_code;
                 $final_result["message"] = "";
                 echo json_encode($final_result);
+
+                break2;
             }
             break;
 
@@ -1334,6 +1360,7 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
+                break 2;
             }
             break;
 
@@ -1349,6 +1376,7 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
+                break 2;
             }
             break;
 
@@ -1359,7 +1387,7 @@ do {
                 $result = get_business_delivery_info($business_id);
 
                 echo json_encode($result);
-                break ;
+                break 2;
             }
             break;
 
@@ -1397,6 +1425,8 @@ do {
                     $final_result["status"] = -10;
                 }
                 echo json_encode($final_result);
+
+                break 2;
             }
             break;
 
@@ -1416,6 +1446,7 @@ do {
                 $final_result["data"] = $result;
 
                 echo json_encode($final_result);
+                break 2;
             }
             break;
 
@@ -1442,7 +1473,9 @@ do {
                   $status = filter_input(INPUT_GET, 'order_status');
                   $result = helper_order_information($status, $days_before_today);
                   echo json_encode( $result);
+                  break 2;
               }
+
               break;
 
         case 24:
@@ -1456,6 +1489,7 @@ do {
 //                    $result["error_message"] = "";
 //                }
                 echo json_encode( $result);
+                break 2;
             }
             break;
 
@@ -1470,7 +1504,7 @@ do {
                 }
                 echo json_encode( $result);
 
-                break 2;
+                break;
             }
             break;
 
