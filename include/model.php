@@ -1372,9 +1372,7 @@ do {
                 $result = get_consumer_all_cc_info($consumer_id);
                 $final_result["status"] = 0;
                 $final_result["data"] = $result;
-                if (!$result) {
-                    $final_result["status"] = -10;
-                }
+
                 echo json_encode($final_result);
                 break 2;
             }
