@@ -1064,6 +1064,7 @@ do {
                 $final_result["data"] = $return_result;
                 $final_result["nData"] = count($return_result);
                 echo json_encode($final_result);
+                break 2;
             }
             break;
         case 1:
