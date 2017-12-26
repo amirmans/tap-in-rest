@@ -427,11 +427,12 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     // status
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
       points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id
-      , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, pd_locations_id, pd_time, pd_instruction)
+      , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, delivery_charge_amount, pd_locations_id
+      , pd_time, pd_instruction)
     Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
       '$cc_last_4_digits', 1, $no_items_in_order, '$note', now(), $consumer_delivery_id
-      ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_locations_id, '$pd_time'
-      , '$pd_instruction');";
+      ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_charge_amount, $pd_locations_id
+      , '$pd_time', '$pd_instruction');";
 
     $conn->query($insert_query);
 
