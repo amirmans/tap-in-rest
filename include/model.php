@@ -1040,6 +1040,68 @@ function getBusinessInfoWithConsumerRating($business_id, $consumer_id) {
 
 }
 
+function getBusinessMessageToUser($business_id, $consumer_id) {
+ if (empty($consumer_id) ) {
+     $consumer_id = 0;
+ }
+ if (empty($business_id) ) {
+     $business_id = 0;
+ }
+
+ $query = "select message from business_message_to_user where 
+    business_id = $business_id and consumer_id = $consumer_id ORDER BY TIMESTAMP desc LIMIT 1";
+
+    return getDBresult($query);
+}
+
+/*
+ * returns number of days from now,  month, year, day, open hour (hour and min) and closing hour (hour and min)
+ */
+function getBusinessNextBusinessHours($business_id, $time1) {
+
+    // snipit from the above
+    $givenDate = date('Y/m/d :h:i', $time1);
+    $day_number = date('N', $givenDate);
+    if ($day_number > 6) {
+        $day_number = 0;
+    }
+
+    $nDaysInWeek = 6; // zero based
+    $businessClosed = true;
+    $counter = 0;
+    while ($businessClosed && $counter++ < $nDaysInWeek) {
+        $hours_query = "select businessID, opening_time, closing_time, break_start, break_end from  opening_hours where
+          weekday_id = $day_number and businessID = $business_id order by priority DESC limit 1;";
+        $hours_result = getDBresult($hours_query);
+        $row["opening_time"] = $hours_result[0]["opening_time"];
+        $row["closing_time"] = $hours_result[0]["closing_time"];
+        $row["break_start"] = $hours_result[0]["break_start"];
+        $row["break_end"] = $hours_result[0]["break_end"];
+        if ( $row["opening_time"] < $row["closing_time"]) {
+            $businessClosed = false;
+        }
+        else
+        {
+            if ($day_number++ > 6) {
+                $day_number = 0;
+            }
+        }
+    }
+    if ($counter >= $nDaysInWeek) {
+        // next business day was NOT found within the next week.  Error for us
+        $result["status"] = -1;
+        $result["data"] = array();
+    } else {
+        // We found the next  business day
+        $result["status"] = 1;
+        $row["ndaysFromGivenDay"] = $counter - 1;
+        $result["data"] = $row;
+    }
+
+    return $result;
+}
+
+
 // main block
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
@@ -1541,17 +1603,52 @@ do {
                 $final_result = array();
                 $final_result["status"] = 0;
                 $final_result["data"] = $result;
+                $final_result["data"]["information_date"] = date('Y-m-d H:i:s');
 
                 echo json_encode( $final_result);
                 break 2;
             }
             break;
 
+        /** TODO
+         * We want to retrieve and pass four different messages to the client
+         * 1. message from all businesses to all consumers
+         * 2. message from all businesses to a consumers
+         * 3. message from one business to all consumers
+         * 4. message from one business to a consumer
+         */
+        case 29:
+            $pos = stripos($cmd, "getBusinessMessageToUser");
+            if ($pos !== false) {
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+                $result = getBusinessMessageToUser($business_id, $consumer_id);
+
+                $final_result["status"] = 0;
+                $final_result["date"] = $result[0]["message"];
+
+                echo json_encode( $final_result);
+                break 2;
+            }
+            break;
+
+        case 30:
+            $pos = stripos($cmd, "getBusinessNextBusinessHours");
+            if ($pos !== false) {
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                $time1 = filter_input(INPUT_GET, 'time1');
+                //php time should be in 2010-02-06 19:30:13 format
+                $result = getBusinessNextBusinessHours($business_id, $time1);
+
+                echo json_encode( $result);
+                break 2;
+            }
+            break;
 
         default:
             break;
-    } // switch
+   } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 29) ;
+} while ($cmdCounter < 31);
 
