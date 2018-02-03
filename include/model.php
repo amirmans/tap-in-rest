@@ -1056,49 +1056,70 @@ function getBusinessMessageToUser($business_id, $consumer_id) {
 
 /*
  * returns number of days from now,  month, year, day, open hour (hour and min) and closing hour (hour and min)
+ * starting day is either doday, if buiness is currently or was open today
+ * , otherwise the starting day is tommorrow
  */
-function getBusinessNextBusinessHours($business_id, $time1) {
+function getBusinessServicesAvailability($business_id) {
 
-    // snipit from the above
-    $givenDate = date('Y/m/d :h:i', $time1);
-    $day_number = date('N', $givenDate);
+    $day_number = date('N', time()); //1 (for Monday) through 7 (for Sunday)
+
+    // in our system days are represented as above but zero based
+    $day_number--;
     if ($day_number > 6) {
         $day_number = 0;
     }
 
-    $nDaysInWeek = 6; // zero based
-    $businessClosed = true;
+    //  init variables
+    $nDaysInWeek = 7; // zero based
     $counter = 0;
-    while ($businessClosed && $counter++ < $nDaysInWeek) {
-        $hours_query = "select businessID, opening_time, closing_time, break_start, break_end from  opening_hours where
-          weekday_id = $day_number and businessID = $business_id order by priority DESC limit 1;";
-        $hours_result = getDBresult($hours_query);
-        $row["opening_time"] = $hours_result[0]["opening_time"];
-        $row["closing_time"] = $hours_result[0]["closing_time"];
-        $row["break_start"] = $hours_result[0]["break_start"];
-        $row["break_end"] = $hours_result[0]["break_end"];
-        if ( $row["opening_time"] < $row["closing_time"]) {
-            $businessClosed = false;
-        }
-        else
-        {
-            if ($day_number++ > 6) {
-                $day_number = 0;
-            }
-        }
-    }
-    if ($counter >= $nDaysInWeek) {
-        // next business day was NOT found within the next week.  Error for us
-        $result["status"] = -1;
-        $result["data"] = array();
-    } else {
-        // We found the next  business day
-        $result["status"] = 1;
-        $row["ndaysFromGivenDay"] = $counter - 1;
-        $result["data"] = $row;
-    }
+    $service_availability[0]['open_later_today'] = false;
+    $service_availability[0]["open"] = false;
+    $service_availability[0]['closed_all_day'] = false;
+//    $service_availability[0]["closed_rest_of_day"] = true;
 
-    return $result;
+    while ($counter < $nDaysInWeek) {
+        $pickup_hours_query = "select businessID, opening_time, closing_time, break_start, break_end from  opening_hours where
+          weekday_id = $day_number and businessID = $business_id order by priority DESC limit 1;";
+        $pickup_hours_result = getDBresult($pickup_hours_query);
+        $row_pickup = $pickup_hours_result[0];
+        $row_pickup['day_of_week'] = $day_number;
+//        $row['closed_all_today'] = false;
+
+        // stats for today
+        if ($counter == 0) {
+            $now_time = date('H:i:s');
+            $closing_time_string = $row_pickup['closing_time'];
+            $closing_time= date('H:i:s', strtotime($closing_time_string));
+
+            $opening_time_string = $row_pickup['opening_time'];
+            $opening_time= date('H:i:s', strtotime($opening_time_string));
+            if ($row_pickup["closing_time"] <= $row_pickup["opening_time"]) {
+                $service_availability[0]["closed_all_day"] = true;
+            }
+            if ( ($now_time < $closing_time) && ($now_time >= $opening_time)) {
+                $service_availability[0]["open"] = true;
+            } else if ($now_time < $opening_time) {
+                $service_availability[0]["open_later_today"] = true;
+            }
+
+        }
+
+        if ($row_pickup["closing_time"] > $row_pickup["opening_time"]) {
+            $row_pickup['closed_all_today'] = false;
+        } else {
+            $row_pickup['closed_all_today'] = true;
+        }
+
+        if (++$day_number > 6) {
+            $day_number = 0;
+        }
+
+        $service_availability[0][] = $row_pickup;
+        $counter++;
+    }
+    $services_availability[] = $service_availability[0];
+
+    return $services_availability;
 }
 
 
@@ -1603,7 +1624,7 @@ do {
                 $final_result = array();
                 $final_result["status"] = 0;
                 $final_result["data"] = $result;
-                $final_result["data"]["information_date"] = date('Y-m-d H:i:s');
+                $final_result["information_date"] = date('Y-m-d H:i:s');
 
                 echo json_encode( $final_result);
                 break 2;
@@ -1633,12 +1654,12 @@ do {
             break;
 
         case 30:
-            $pos = stripos($cmd, "getBusinessNextBusinessHours");
+            $pos = stripos($cmd, "getBusinessServicesAvailability");
             if ($pos !== false) {
                 $business_id = filter_input(INPUT_GET, 'business_id');
-                $time1 = filter_input(INPUT_GET, 'time1');
+
                 //php time should be in 2010-02-06 19:30:13 format
-                $result = getBusinessNextBusinessHours($business_id, $time1);
+                $result = getBusinessServicesAvailability($business_id);
 
                 echo json_encode( $result);
                 break 2;
