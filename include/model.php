@@ -474,7 +474,7 @@ function save_points_for_customer_in_business($businessID, $consumerID, $orderID
 
     $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
   VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
-    getDBresult($insert_query);
+    insertOrUpdateQuery($insert_query);
     return 1;
 }
 
