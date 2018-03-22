@@ -92,6 +92,62 @@ function insertOrUpdateQuery($query)
     }
 }
 
+function getCorpsForDomain($corp_domain) {
+    $corp_data = array();
+
+    if ($corp_domain) {
+        $corp_query = "select * from corp where domain = '$corp_domain' and active = 1;";
+        $corp_result = getDBresult($corp_query);
+
+        if (!empty($corp_result)) {
+            $corps_data['success'] = 0;
+        } else {
+            $corps_data['success'] = -1;
+        }
+        $corps_data['data'] = $corp_result;
+    }
+    return ($corps_data);
+}
+
+function getBusinessesForCorpDeliveryLocationAndDomain($corp_delivery_location, $corp_domain) {
+
+    $corp_query = "select * from corp where delivery_location = '$corp_delivery_location' and domain = '$corp_domain' and active = 1;";
+    $corp_result = getDBresult($corp_query);
+
+    $merchants = $corp_result[0]['merchant_ids'];
+    $businesses_info = array();
+    if (!empty($merchants)) {
+        $businesses_query = "select * from business_customers where businessID in ($merchants) and active = 1;";
+        $businesses_info = getDBresult($businesses_query);
+    }
+
+//    $corp_result = array();
+    if (count($businesses_info) > 0) {
+        $corp_result['success'] = 0;
+    } else {
+        $corp_result['success'] = -1;
+    }
+    $corp_result['data'] = $businesses_info;
+
+    return ($corp_result);
+}
+
+function get_all_businesses_for_set($businesses) {
+    $result = array();
+
+
+    $businesses_query = "select * from business_customers where businessID in ($businesses) and active = 1;";
+    $businesses_info = getDBresult($businesses_query);
+    if (empty($businesses_info)) {
+        $result["status"] = -1;
+    } else {
+        $result['status'] = 0;
+    }
+    $result['data'] = $businesses_info;
+
+    return($result);
+}
+
 function get_all_businesses_info($consumer_id) {
     if ($consumer_id) {
         $query = "select distinct a.*, if (r.avg is null, 0, r.avg)
@@ -1057,7 +1113,7 @@ function getBusinessMessageToUser($business_id, $consumer_id) {
 /*
  * returns number of days from now,  month, year, day, open hour (hour and min) and closing hour (hour and min)
  * starting day is either doday, if buiness is currently or was open today
- * , otherwise the starting day is tommorrow
+ * , otherwise the starting day is tomorrow
  */
 function getBusinessServicesAvailability($business_id) {
 
@@ -1666,10 +1722,51 @@ do {
             }
             break;
 
+        case 31:
+            $pos = stripos($cmd, "getBusinessesForCorpDeliveryLocationAndDomain");
+            if ($pos !== false) {
+                $corp_name = filter_input(INPUT_GET, 'corp_name');
+                $corp_domain = filter_input(INPUT_GET, 'corp_domain');
+
+                //php time should be in 2010-02-06 19:30:13 format
+                $result = getBusinessesForCorpDeliveryLocationAndDomain($corp_name, $corp_domain);
+
+                echo json_encode( $result);
+                break 2;
+            }
+            break;
+
+        case 32:
+            $pos = stripos($cmd, "getCorpsForDomain");
+            if ($pos !== false) {
+                $corp_domain = filter_input(INPUT_GET, 'domain');
+
+                //php time should be in 2010-02-06 19:30:13 format
+                $result = getCorpsForDomain($corp_domain);
+
+                echo json_encode( $result);
+                break 2;
+            }
+            break;
+
+        case 33:
+            $pos = stripos($cmd, "get_all_businesses_for_set");
+            if ($pos !== false) {
+                $businesses = filter_input(INPUT_GET, 'ids');
+
+                //php time should be in 2010-02-06 19:30:13 format
+                $result = get_all_businesses_for_set($businesses);
+                $jsoned_result = json_encode( $result);
+
+                echo $jsoned_result;
+                break 2;
+            }
+            break;
+
         default:
             break;
    } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 31);
+} while ($cmdCounter < 34);
 

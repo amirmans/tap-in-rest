@@ -221,6 +221,7 @@ class API
         $device_token = $this->getString('device_token', 64, true);
         $uuid = $this->getString('uuid', 64, true);
         $email = $this->getString('email', 30, true);
+        $email_work = $this->getString('email_work', 30, true);
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
         $app_ver = $this->getString('app_ver', 20, true);
@@ -312,7 +313,7 @@ class API
 
 
       if (!empty($email)) {
-        $executeArray[] = $email;
+        $executeArray[] = $email;$result_arr['email1'] = $result[0]['email1'];
         $sqlStatement = $sqlStatement . ",email1";
         if (strlen($updateStatement) > 1) {
           $updateStatement = $updateStatement . ", ";
@@ -321,6 +322,18 @@ class API
         $Update_executeArray[] = $email;
         $valuesStatement = $valuesStatement . ", ?";
       }
+
+      if (!empty($email_work)) {
+        $executeArray[] = $email_work;
+        $sqlStatement = $sqlStatement . ",email2";
+        if (strlen($updateStatement) > 1) {
+          $updateStatement = $updateStatement . ", ";
+        }
+        $updateStatement = $updateStatement . "email2 = ?";
+        $Update_executeArray[] = $email_work;
+        $valuesStatement = $valuesStatement . ", ?";
+      }
+
         if ($age_group > - 1) {
             $executeArray[] = $age_group;
             $sqlStatement = $sqlStatement . ",age_group";
@@ -365,6 +378,7 @@ class API
                 $result_arr['qrcode_file'] = $result[0]['qrcode_file'];
                 $result_arr['uid'] = $result[0]['uid'];
                 $result_arr['email1'] = $result[0]['email1'];
+                $result_arr['email2'] = $result[0]['email2'];
                 $result_arr['nickname'] = $result[0]['nickname'];
                 $result_arr['zipcode'] = $result[0]['zipcode'];
                 $result_arr['dob'] = $result[0]['dob'];
