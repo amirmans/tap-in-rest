@@ -136,7 +136,7 @@ function get_all_businesses_for_set($businesses) {
     $result = array();
 
 
-    $businesses_query = "select * from business_customers where businessID in ($businesses) and active = 1;";
+    $businesses_query = "select * from business_customers where businessID in ($businesses) and (active = 1 or beta = 1);";
     $businesses_info = getDBresult($businesses_query);
     if (empty($businesses_info)) {
         $result["status"] = -1;
@@ -395,7 +395,7 @@ function previous_order($business_id, $consumer_id) {
 function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amount, $points_dollar_amount
                     , $tax_amount, $cc_last_4_digits, $orderData, $note, $consumer_delivery_id
                     , $promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount
-                    , $pd_locations_id, $pd_time, $pd_instruction) {
+                    , $pd_locations_id, $pd_time, $pd_instruction, $order_type) {
     if (empty($note)) {
         $note = "";
     }
@@ -445,6 +445,9 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     if (empty($pd_instruction)) {
         $pd_instruction = "";
     }
+    if (empty($order_type)) {
+        $order_type = 0;
+    }
     // although total is given, we want to calculate it now
     // later we will fix the bug in the client, or wont ask for  the total
     $total = $subtotal - $promotion_discount_amount + $pd_charge_amount + $tip_amount + $tax_amount
@@ -484,11 +487,11 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
       points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id
       , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount, delivery_charge_amount, pd_locations_id
-      , pd_time, pd_instruction)
+      , pd_time, pd_instruction, order_type)
     Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
       '$cc_last_4_digits', 1, $no_items_in_order, '$note', now(), $consumer_delivery_id
       ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount, $pd_charge_amount, $pd_locations_id
-      , '$pd_time', '$pd_instruction');";
+      , '$pd_time', '$pd_instruction', '$order_type');";
 
     $conn->query($insert_query);
 
@@ -1223,7 +1226,7 @@ do {
                     ,$request["cc_last_4_digits"], $request["data"], $request["note"], $request["consumer_delivery_id"]
                     ,$request["promotion_code"],$request["promotion_discount_amount"]
                     ,$request["pd_mode"], $request["pd_charge_amount"], $request["pd_locations_id"], $request['pd_time']
-                    , $request['pd_instruction']);
+                    , $request['pd_instruction'], $request['order_type']);
                 // for backward compatibility
                 if ($order_id > 0) {
                   if (empty($request["subtotal"])) {
