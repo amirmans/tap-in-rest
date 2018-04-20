@@ -524,20 +524,73 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     return $order_id;
 }
 
+/**
+ * [save_points_for_customer_in_business description]
+ * @param  [type] $businessID  for global points we set the business ID = 0 and display them when the user has not chosen an business
+ * @param  [type] $consumerID  [description]
+ * @param  [type] $orderID     [description]
+ * @param  [type] $points      [description]
+ * @param  [type] $pointReason 5 means globl points
+ * @return [type]              [description]
+ */
 function save_points_for_customer_in_business($businessID, $consumerID, $orderID, $points, $pointReason) {
     $time_field_name = "time_earned";
     if ($points < 0)
     {
         $time_field_name = "time_redeemed";
+        $globalPoints = get_global_points_for_customer($consumerID);
+
+        if ($globalPoints >= 0) {
+            // we have work to do, we need to redeem the global points first
+            if ($globalPoints >= abs($points)) {
+                $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
+                  VALUES ($consumerID, 0, 5, $points, $orderID, now());";
+                insertOrUpdateQuery($insert_query);
+            } else {
+                $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
+                  VALUES ($consumerID, 0, 5, -1*$globalPoints, $orderID, now());";
+                insertOrUpdateQuery($insert_query);
+
+                $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
+                  VALUES ($consumerID, $businessID, $pointReason, $points+$globalPoints, $orderID, now());";
+                insertOrUpdateQuery($insert_query);
+            }
+        }
+
+        return 1;
     }
 
     $insert_query = "INSERT INTO points (consumer_id, business_id, points_reason_id, points, order_id, $time_field_name )
-  VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
+          VALUES ($consumerID, $businessID, $pointReason, $points, $orderID, now());";
     insertOrUpdateQuery($insert_query);
+
     return 1;
 }
 
+
+
+
+function get_global_points_for_customer($consumerID)
+{
+    $query = "select sum(points) as sum_global_points
+  from points where
+  (ISNULL(time_expired) = 1 or time_expired > now())
+  and consumer_id = '$consumerID' and points_reason_id = 5;";
+
+    $result = getDBresult($query);
+
+    return $result[0]["sum_global_points"];
+}
+
+
+
+
 function get_all_points_for_customer($businessID, $consumerID) {
+
+    if (empty($businessID)) {
+        $businessID = 0;
+    }
+
     $query = "select consumer_id, business_id, points_reason_id, points, order_id, time_earned,time_redeemed,
   case `points`.`time_earned`
   when '0000-00-00 00:00:00'    then `points`.`time_redeemed`
@@ -548,9 +601,9 @@ function get_all_points_for_customer($businessID, $consumerID) {
   (ISNULL(time_expired) = 1 or time_expired > now())
   and consumer_id = '$consumerID'";
 
-    if ($businessID  && $businessID <> "0") {
-        $query .= " and business_id = $businessID";
-    }
+//    if ($businessID  && $businessID <> "0") {
+        $query .= " and business_id in ( $businessID,0)";
+//    }
 
     $query .= " order by (activity_time) DESC;";
 
@@ -1107,7 +1160,7 @@ function getBusinessMessageToUser($business_id, $consumer_id) {
      $business_id = 0;
  }
 
- $query = "select message from business_message_to_user where 
+ $query = "select message from business_message_to_user where
     business_id = $business_id and consumer_id = $consumer_id ORDER BY TIMESTAMP desc LIMIT 1";
 
     return getDBresult($query);
