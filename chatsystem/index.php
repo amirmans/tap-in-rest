@@ -29,7 +29,7 @@ try
 	// Load the config file. I prefer to keep all configuration settings in a
 	// separate file so you don't have to mess around in the main code if you
 	// just want to change some settings.
-	require_once '../include/api_config.php';
+    include_once(dirname(dirname(__FILE__)) . '/include/config_db.inc.php');
 	$config = $config['production'];
 
 	// In development mode, we fake a delay that makes testing more realistic.

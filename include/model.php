@@ -9,6 +9,8 @@ include_once(dirname(dirname(__FILE__)) . '/utils/ti_functions.php');
 include_once(dirname(dirname(__FILE__)) . '/include/consts_server.inc');
 include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 
+
+
 function notify_for_new_order($businessID, $orderID) {
     $params['business_id']=$businessID;
     $params['order_id']= $orderID;
@@ -92,21 +94,51 @@ function insertOrUpdateQuery($query)
     }
 }
 
+
+function getPointsNeededForOneDollar($business_id) {
+    $query = "select * from points_map where business_id = $business_id;";
+
+    $result = getDBresult($query);
+    return (round($result[0]['points'] / $result[0]['equivalent']));
+
+}
+
+
 function getCorpsForDomain($corp_domain) {
     $corp_data = array();
 
     if ($corp_domain) {
-        $corp_query = "select * from corp where domain = '$corp_domain' and active = 1;";
+        $corp_query = "select * from corp where domain = '$corp_domain' and domain <> 'default' and active = 1;";
         $corp_result = getDBresult($corp_query);
 
         if (!empty($corp_result)) {
             $corps_data['success'] = 0;
         } else {
             $corps_data['success'] = -1;
+            // nothing is found, we add our default corp for people who want to see what they are missing :-)
+            $corp_query = "select * from corp where domain = 'default'";
+            $corp_result = getDBresult($corp_query);
         }
         $corps_data['data'] = $corp_result;
     }
+    else {
+        $corps_data['success'] = -1;
+    }
+
     return ($corps_data);
+}
+
+
+/**
+ * @param $email
+ * @return array with consumer info: if the array is empty, it meands the consumer doesn't not exist
+ */
+function getConsumerWithEmail($email) {
+    $selectQuery = "select  * from consumer_profile where email1 = $email or email2 = $email";
+
+    $queryResult = getDBresult($selectQuery);
+    return ($queryResult[0]);
+
 }
 
 function getBusinessesForCorpDeliveryLocationAndDomain($corp_delivery_location, $corp_domain) {
@@ -840,7 +872,7 @@ function save_all_notifications_for_consumer($request) {
 }
 
 function get_consumer_all_cc_info($consumer_id) {
-    $query = "select * from consumer_cc_info where consumer_id = $consumer_id;";
+    $query = "select * from consumer_cc_info where consumer_id = $consumer_id order by `default` desc,  `timestamp` desc;";
 
     return (getDBresult($query));
 }
@@ -1234,6 +1266,68 @@ function getBusinessServicesAvailability($business_id) {
     return $services_availability;
 }
 
+
+function save_referral_info($referrer_id, $referred_email, $referrer_email, $msg_to_referred) {
+
+    $conn = getDBConnection();
+    $returnVal = -1;
+
+    if (empty ($referrer_email)) {
+        $referrer_email = "";
+    }
+
+    // check to see if this person has been referred by anyone else
+    $select_query = "select referred_email from referral where referred_email = '$referred_email';";
+    $already_referred =  getDBresult($select_query);
+    if (!empty($already_referred)) {
+        return -2;
+    }
+
+    $select_query = "select uid from  consumer_profile where email1 = '$referred_email' or email2 = '$referred_email';";
+    $already_referred =  getDBresult($select_query);
+    if (!empty($already_referred)) {
+        return -3;
+    }
+    // now check to determine if this person is already in our system.
+
+    $prepared_stmt = "INSERT INTO  referral (`referrer_id`, `referred_email`, `date_referred`, `msg_to_referred`) 
+        VALUES (?, ?, now(), ?)";
+
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc1 = $prepared_query->bind_param('sss', $referrer_id,$referred_email, $msg_to_referred);
+
+    $rc2 = $prepared_query->execute();
+
+    if ( ($rc1 === false) || ($rc2===false)) {
+        $returnVal = -1;
+    }
+    else {
+        $returnVal = 1;
+    }
+    return $returnVal;
+}
+
+function assign_points_to_uid($consumer_id, $points, $business_id) {
+    $conn = getDBConnection();
+    $returnVal = -1;
+
+    $prepared_stmt = "INSERT INTO points (`consumer_id`, `business_id`, `points_reason_id`, `points`
+        , `order_id` , `available`, `time_earned`, `time_redeemed`, `time_expired`) 
+        VALUES (?, ?, 5, ?, 0, 1, now(), NULL, NULL)";
+
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc1 = $prepared_query->bind_param('sss', $consumer_id, $business_id , $points);
+
+    $rc2 = $prepared_query->execute();
+
+    if ( ($rc1 === false) || ($rc2===false)) {
+        $returnVal = -1;
+    }
+    else {
+        $returnVal = 1;
+    }
+    return $returnVal;
+}
 
 // main block
 $cmd = $_REQUEST['cmd'];
@@ -1819,10 +1913,108 @@ do {
             }
             break;
 
+        case 34:
+            $request = json_decode(file_get_contents('php://input'), TRUE);
+            $cmd_post = $request["cmd"];
+            $pos = stripos($cmd_post, "save_referral_info");
+            if ($pos !== false) {
+                //php time should be in 2010-02-06 19:30:13 format
+                $result['status'] = save_referral_info($request["referrer_id"], $request["referred_email"], $request["referrer_email"]
+                    ,$request["msg_to_referred"]);
+                switch ($result['status']) {
+                    case "-1":
+                        $result['message'] = "Server error.  Please try again.";
+                    break;
+                    case "-2":
+                        $result['message'] = "Your friend has already been referred.";
+                        break;
+                    case "-3":
+                        $result['message'] = "Your friend has already registered.";
+                        break;
+
+                    default:
+                        $result['message']= "";
+                }
+
+                echo json_encode($result);
+                break 2;
+            }
+            break;
+
+        /**
+         * Please keep in mind, we cannot assign less than 10 dollar worse of points.  200 is the least amount of points
+         * that a consumer should have before cashing out
+         */
+        case 35:
+            $pos = stripos($cmd, "assign_points_to_email");
+            if ($pos !== false) {
+                $email = filter_input(INPUT_GET, 'email');
+//                $points = filter_input(INPUT_GET, 'points');
+                $dollar_amount = filter_input(INPUT_GET, 'dollar_amount');
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                if (empty($business_id)) {
+                    $business_id = 0;
+                }
+                if ($dollar_amount <= 0) {
+                    $points = filter_input(INPUT_GET, 'points');
+                } else {
+                    // get points
+                    $nPointsForADollar = getPointsNeededForOneDollar($business_id);
+                    $points = $nPointsForADollar * $dollar_amount;
+                }
+
+                $result = array();
+                $consumerResult = getConsumerWithEmail($email);
+                if (empty($consumerResult) || empty($consumerResult['uid']) || ($business_id < 0) || ($points <= 0) ) {
+                    $result['status'] = -1;
+                }
+                else {
+                    $result['status'] = assign_points_to_uid($consumerResult['uid'], $points, $business_id);
+                }
+
+                echo json_encode($result);
+                break 2;
+            }
+            break;
+
+            /**
+             * business_id = 0 means this is a global point
+             * dollar_amount supersedes points
+            */
+            case 36:
+                $pos = stripos($cmd, "assign_points_to_uid");
+                if ($pos !== false) {
+                    $consumer_id = filter_input(INPUT_GET, 'consumer_id');
+                    $dollar_amount = filter_input(INPUT_GET, 'dollar_amount');
+                    $business_id = filter_input(INPUT_GET, 'business_id');
+//                    $points = filter_input(INPUT_GET, 'points');
+                    if (empty($business_id)) {
+                        $business_id = 0;
+                    }
+                    if ($dollar_amount <= 0) {
+                        $points = filter_input(INPUT_GET, 'points');
+                    } else {
+                        // get points
+                        $nPointsForADollar = getPointsNeededForOneDollar($business_id);
+                        $points = $nPointsForADollar * $dollar_amount;
+                    }
+
+                    $result = array();
+                    $result['status'] = -1; // initialize with error
+                    if ($points && $consumer_id && $business_id >=0) {
+                        $result['status'] = assign_points_to_uid($consumer_id, $points, $business_id);
+                    }
+                    $jsoned_result = json_encode($result);
+
+                    echo $jsoned_result;
+                    break 2;
+                }
+            break;
+
         default:
             break;
    } // switch
 
     $cmdCounter++;
-} while ($cmdCounter < 34);
+} while ($cmdCounter < 37);
 

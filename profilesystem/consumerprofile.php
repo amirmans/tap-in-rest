@@ -1,4 +1,9 @@
 <?php
+include_once(dirname(dirname(__FILE__)) . '/include/config_db.inc.php');
+include_once(dirname(dirname(__FILE__)) . '/utils/ti_functions.php');
+include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
+
+
 $result_arr = array();
 
 try {
@@ -23,7 +28,6 @@ try {
     // Load the config file. I prefer to keep all configuration settings in a
     // separate file so you don't have to mess around in the main code if you
     // just want to change some settings.
-    require_once '../include/api_config.php';
     $config = $config[APPLICATION_ENV];
 
     // In development mode, we fake a delay that makes testing more realistic.
@@ -35,6 +39,8 @@ try {
     // instance of that class and let it handle the request.
     $api = new API($config);
 
+    // the line below is commented out because it doesn't work.  json_decode changes the value of  parameters that don't
+    // enclosed with double quote
 //    $_REQUEST = json_decode(file_get_contents('php://input'), true);
     $api->handleCommand();
 
@@ -186,7 +192,7 @@ class API
     function handleGetQRImage() {
         $table_name = "consumer_profile";
         $userID = $this->getUID();
-        $sql_statement = "Select qrcode_file from $table_name where uid = ?";
+        $sql_statement = "Select qrcode_file from consumer_profile where uid = ?";
         $stmt = $this->pdo->prepare($sql_statement);
         $stmt->execute(array($userID));
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -220,8 +226,8 @@ class API
         $password = $this->getString('password', 20, true);
         $device_token = $this->getString('device_token', 64, true);
         $uuid = $this->getString('uuid', 64, true);
-        $email = $this->getString('email', 30, true);
-        $email_work = $this->getString('email_work', 30, true);
+        $email = $this->getString('email', 40, true);
+        $email_work = $this->getString('email_work', 40, true);
         $zipcode = $this->getString('zipcode', 12, true);
         $age_group = $this->getInt("age_group", true);
         $app_ver = $this->getString('app_ver', 20, true);
@@ -235,7 +241,7 @@ class API
         $updateStatement = "";
 
         $executeArray[] = $uuid;
-        $sqlStatement = "INSERT INTO $table_name (uuid";
+        $sqlStatement = "INSERT INTO consumer_profile (uuid";
         $valuesStatement = " VALUES(?";
         if (!empty($password)) {
             $executeArray[] = $password;
@@ -313,7 +319,9 @@ class API
 
 
       if (!empty($email)) {
-        $executeArray[] = $email;$result_arr['email1'] = $result[0]['email1'];
+        $executeArray[] = $email;
+//        $result_arr['email1'] = $result[0]['email1'];
+        $result_arr['email1'] = $email;
         $sqlStatement = $sqlStatement . ",email1";
         if (strlen($updateStatement) > 1) {
           $updateStatement = $updateStatement . ", ";
@@ -350,7 +358,7 @@ class API
 
         $this->pdo->beginTransaction();
 
-        // $sql_statement = "INSERT INTO $table_name (nickname, password, age_group) "
+        // $sql_statement = "INSERT INTO consumer_profile (nickname, password, age_group) "
         // . "VALUES (?,?,?) ON DUPLICATE KEY UPDATE password=?, age_group=?";
 
         if (strlen($updateStatement) > 1) {
@@ -365,11 +373,12 @@ class API
         $stmt = $this->pdo->prepare($finalSqlStatement);
         $stmt->execute($executeArray);
         $userID = $this->pdo->lastInsertId();
+        $effectedRowCount = $stmt->rowCount();  // 1 if this was an insert 2, if it was an update
         $this->pdo->commit();
 
         global $result_arr;
         if ($userID == 0) {
-            $sql_statement = "Select * from $table_name where uuid = ?";
+            $sql_statement = "Select * from consumer_profile where uuid = ?";
             $stmt = $this->pdo->prepare($sql_statement);
             $stmt->execute(array($uuid));
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -387,6 +396,15 @@ class API
             }
         } else {
             $result_arr['uid'] = $userID;
+        }
+        if ($effectedRowCount == 1) {
+            $result_arr['new_user'] = 1;
+            $params = array();
+            $params["email1"] = $email;
+            $params["email2"] = $email_work;
+            askServerToPerformATask("referral.php", $params);
+        } else {
+            $result_arr['new_user'] = 0;
         }
     }
 
@@ -411,7 +429,7 @@ class API
         $this->pdo->beginTransaction();
         $table_name = 'consumer_profile';
 
-        $sql_statement = "INSERT INTO $table_name (nickname, password, email1, zipcode, age_group, device_token) " .
+        $sql_statement = "INSERT INTO consumer_profile (nickname, password, email1, zipcode, age_group, device_token) " .
             "VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE password=?, age_group=?, email1=?, zipcode =?";
 
         //      $stmt = $this->pdo->prepare('INSERT INTO consumer_profile (nickname, password) VALUES (?, ?)');
@@ -435,7 +453,7 @@ class API
 
         $table_name = 'consumer_profile';
         $this->pdo->beginTransaction();
-        $sql_statement = "INSERT INTO $table_name (uid, device_token)
+        $sql_statement = "INSERT INTO consumer_profile (uid, device_token)
       VALUES (?,?) ON DUPLICATE KEY UPDATE device_token=?";
 
         //      $stmt = $this->pdo->prepare('INSERT INTO consumer_profile (nickname, password) VALUES (?, ?)');
@@ -474,7 +492,7 @@ class API
 
         // uid is always mandatory as it is a key
         $executeArray[] = $nickname;
-        $sqlStatement = "UPDATE $table_name SET nickname = ?";
+        $sqlStatement = "UPDATE consumer_profile SET nickname = ?";
         if (!empty($password)) {
             $executeArray[] = $password;
             $sqlStatement = $sqlStatement . ",password = ?";
@@ -497,14 +515,14 @@ class API
         if (!isset($_REQUEST['device_token'])) {
 
             // no device token, update everything but
-            //       $statementString = "UPDATE $table_name SET nickname = ?, password = ?, age_group = ?  WHERE uid = ?";
+            //       $statementString = "UPDATE consumer_profile SET nickname = ?, password = ?, age_group = ?  WHERE uid = ?";
             $stmt = $this->pdo->prepare($sqlStatement);
 
             // $stmt->execute(array($nickname, $password, $age_group,$uid));
             $stmt->execute($executeArray);
         } else {
             $device_token = $this->getString('device_token', 64);
-            $statementString = "UPDATE $table_name SET nickname = ?, password = ?, email1 = ?, zipcode = ?, age_group = ?, device_token = ?  WHERE uid = ?";
+            $statementString = "UPDATE consumer_profile SET nickname = ?, password = ?, email1 = ?, zipcode = ?, age_group = ?, device_token = ?  WHERE uid = ?";
             $stmt = $this->pdo->prepare($statementString);
             $stmt->execute(array($nickname, $password, $email, $zipcode, $age_group, $device_token, $uid));
         }
