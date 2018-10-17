@@ -373,39 +373,42 @@ class API
         $stmt = $this->pdo->prepare($finalSqlStatement);
         $stmt->execute($executeArray);
         $userID = $this->pdo->lastInsertId();
-        $effectedRowCount = $stmt->rowCount();  // 1 if this was an insert 2, if it was an update
+        $effectedRowCount = $stmt->rowCount();  // 1 if this was an insert; 2, if it was an update
         $this->pdo->commit();
 
         global $result_arr;
-        if ($userID == 0) {
-            $sql_statement = "Select * from consumer_profile where uuid = ?";
-            $stmt = $this->pdo->prepare($sql_statement);
-            $stmt->execute(array($uuid));
-            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($result !== false) {
-                $result_arr['qrcode_file'] = $result[0]['qrcode_file'];
-                $result_arr['uid'] = $result[0]['uid'];
-                $result_arr['email1'] = $result[0]['email1'];
-                $result_arr['email2'] = $result[0]['email2'];
-                $result_arr['nickname'] = $result[0]['nickname'];
-                $result_arr['zipcode'] = $result[0]['zipcode'];
-                $result_arr['dob'] = $result[0]['dob'];
-                $result_arr['age_group'] = $result[0]['age_group'];
-                $result_arr['sms_no'] = $result[0]['sms_no'];
-            }
+        $sql_statement = "Select * from consumer_profile where uuid = ?";
+        $stmt = $this->pdo->prepare($sql_statement);
+        $stmt->execute(array($uuid));
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $result_arr['new_user'] = 0;
+        if ($result !== false) {
+            $result_arr['qrcode_file'] = $result[0]['qrcode_file'];
+            $result_arr['uid'] = $result[0]['uid'];
+            $result_arr['email1'] = $result[0]['email1'];
+            $result_arr['email2'] = $result[0]['email2'];
+            $result_arr['nickname'] = $result[0]['nickname'];
+            $result_arr['zipcode'] = $result[0]['zipcode'];
+            $result_arr['dob'] = $result[0]['dob'];
+            $result_arr['age_group'] = $result[0]['age_group'];
+            $result_arr['sms_no'] = $result[0]['sms_no'];
         } else {
             $result_arr['uid'] = $userID;
         }
+
+        /**
+         * affectedRowCount of 0 means nothing was done, 2 means an update (one delete and one insert) and 1 means one insertion
+         */
         if ($effectedRowCount == 1) {
             $result_arr['new_user'] = 1;
             $params = array();
             $params["email1"] = $email;
             $params["email2"] = $email_work;
             askServerToPerformATask("referral.php", $params);
-        } else {
-            $result_arr['new_user'] = 0;
         }
+
     }
 
     function handleJoinWithDeviceToken() {
@@ -554,6 +557,7 @@ class API
     // an error message.
     function getString($name, $maxLength, $optional = false) {
         $string = trim($_REQUEST[$name]);
+        $string = str_replace('"', '', $string);
         if ($optional && empty($string)) {
             return $string;
         }
