@@ -331,7 +331,10 @@ class API
         $valuesStatement = $valuesStatement . ", ?";
       }
 
-      if (!empty($email_work)) {
+/**
+ * Sometimes the user wants to set the work email to an empty string, so this is a possible condition
+ */
+//      if (!empty($email_work)) {
         $executeArray[] = $email_work;
         $sqlStatement = $sqlStatement . ",email2";
         if (strlen($updateStatement) > 1) {
@@ -340,7 +343,7 @@ class API
         $updateStatement = $updateStatement . "email2 = ?";
         $Update_executeArray[] = $email_work;
         $valuesStatement = $valuesStatement . ", ?";
-      }
+//      }
 
         if ($age_group > - 1) {
             $executeArray[] = $age_group;
