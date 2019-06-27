@@ -125,10 +125,23 @@
 
     <?php
         date_default_timezone_set('America/Los_Angeles');
+        if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+        getenv('EnvMode') ? getenv('EnvMode') : 'production');
+
         require("../includes/config_db.inc.php");
 
         static $connection = null;
         if ($connection == null) {
+
+            //    global $db_host, $db_user, $db_pass, $db_name;
+
+            global $config;
+            $model_config = $config[APPLICATION_ENV];
+            $db_host = $model_config['db']['host'];
+            $db_name = $model_config['db']['dbname'];
+            $db_user = $model_config['db']['username'];
+            $db_pass = $model_config['db']['password'];
+
             $connection = new mysqli("localhost", $db_user, $db_pass, $db_name);
             if (!$connection) {
                pt_error_log("Fetal - Database Error: ".$connection->connect_error. "\n");

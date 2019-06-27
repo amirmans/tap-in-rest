@@ -51,7 +51,15 @@ function notify_for_new_order($businessID, $orderID) {
 /*--------- database functions -----------------*/
 function connectToDB()
 {
-    global $db_host, $db_user, $db_pass, $db_name;
+//    global $db_host, $db_user, $db_pass, $db_name;
+
+    global $config;
+    $model_config = $config[APPLICATION_ENV];
+    $db_host = $model_config['db']['host'];
+    $db_name = $model_config['db']['dbname'];
+    $db_user = $model_config['db']['username'];
+    $db_pass = $model_config['db']['password'];
+
     $conn = mysqli_connect('p:' . $db_host, $db_user, $db_pass, $db_name) or die("Error - connecting to db" . $conn . mysqli_error($conn));
     $GLOBALS['conn'] = $conn;
 
@@ -729,13 +737,13 @@ function get_options_for_products($product_id, $business_id, $sub_businesses, $p
             $query = "select p.option_id, o.name, o.price, o.description, o.availability_status
         from product_option p,  `option` o
         where o.product_option_category_id = $optionCat_id and p.product_id = $product_id
-	      and o.option_id = p.option_id order by o.name;";
+        and o.option_id = p.option_id order by o.name;";
         } else {
             // it seems this is not needed anymore
             $query = "select p.option_id, o.name, o.price, o.description, o.availability_status
         from product_option p,  `option` o
         where o.product_option_category_id = $optionCat_id
-	      and o.option_id = p.option_id order by o.name;";
+        and o.option_id = p.option_id order by o.name;";
             $product_id = 0;
         }
         $options = getDBresult($query);
@@ -1290,7 +1298,7 @@ function save_referral_info($referrer_id, $referred_email, $referrer_email, $msg
     }
     // now check to determine if this person is already in our system.
 
-    $prepared_stmt = "INSERT INTO  referral (`referrer_id`, `referred_email`, `date_referred`, `msg_to_referred`) 
+    $prepared_stmt = "INSERT INTO  referral (`referrer_id`, `referred_email`, `date_referred`, `msg_to_referred`)
         VALUES (?, ?, now(), ?)";
 
     $prepared_query = $conn->prepare($prepared_stmt);
@@ -1312,7 +1320,7 @@ function assign_points_to_uid($consumer_id, $points, $business_id) {
     $returnVal = -1;
 
     $prepared_stmt = "INSERT INTO points (`consumer_id`, `business_id`, `points_reason_id`, `points`
-        , `order_id` , `available`, `time_earned`, `time_redeemed`, `time_expired`) 
+        , `order_id` , `available`, `time_earned`, `time_redeemed`, `time_expired`)
         VALUES (?, ?, 5, ?, 0, 1, now(), NULL, NULL)";
 
     $prepared_query = $conn->prepare($prepared_stmt);
@@ -1330,6 +1338,10 @@ function assign_points_to_uid($consumer_id, $points, $business_id) {
 }
 
 // main block
+
+if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+    getenv('EnvMode') ? getenv('EnvMode') : 'production');
+
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
 header('Content-type: application/json');

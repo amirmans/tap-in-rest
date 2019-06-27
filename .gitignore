@@ -14,3 +14,5 @@ adminpanel
 /notification/TapInCert_prod.pem
 customer_files/
 /nbproject/private/
+/.vscode
+/tap-in.iml

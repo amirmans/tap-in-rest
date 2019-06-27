@@ -7,30 +7,33 @@ try
 {
 	// Are we running in development or production mode? You can easily switch
 	// // between these two in the Apache VirtualHost configuration.
-	// if (!defined('APPLICATION_ENV'))
-	// 	define('APPLICATION_ENV', getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'production');
-    define("APPLICATION_EN", "production");
-	// In development mode, we show all errors because we obviously want to
-	// know about them. We don't do this in production mode because that might
-	// expose critical details of our app or our database. Critical PHP errors
-	// will still be logged in the PHP and Apache error logs, so it's always
-	// a good idea to keep an eye on them.
-	// if (APPLICATION_ENV == 'development')
-	// {
-	// 	error_reporting(E_ALL|E_STRICT);
-	// 	ini_set('display_errors', 'on');
-	// }
-	// else
-	// {
-	// 	error_reporting(0);
-	// 	ini_set('display_errors', 'off');
-	// }
+
+    if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+        getenv('EnvMode') ? getenv('EnvMode') : 'production');
+
+
+//
+//     In development mode, we show all errors because we obviously want to
+//	 know about them. We don't do this in production mode because that might
+//	 expose critical details of our app or our database. Critical PHP errors
+//	 will still be logged in the PHP and Apache error logs, so it's always
+//	 a good idea to keep an eye on them.
+	 if (APPLICATION_ENV == 'development')
+	 {
+	 	error_reporting(E_ALL|E_STRICT);
+	 	ini_set('display_errors', 'on');
+	 }
+	 else
+	 {
+	 	error_reporting(0);
+	 	ini_set('display_errors', 'off');
+	 }
 
 	// Load the config file. I prefer to keep all configuration settings in a
 	// separate file so you don't have to mess around in the main code if you
 	// just want to change some settings.
     include_once(dirname(dirname(__FILE__)) . '/include/config_db.inc.php');
-	$config = $config['production'];
+	$config = $config[APPLICATION_ENV];
 
 	// In development mode, we fake a delay that makes testing more realistic.
 	// You're probably running this on a fast local server but in production

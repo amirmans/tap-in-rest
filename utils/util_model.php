@@ -12,7 +12,15 @@ include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 /*--------- database functions -----------------*/
 function connectToDB()
 {
-    global $db_host, $db_user, $db_pass, $db_name;
+    //    global $db_host, $db_user, $db_pass, $db_name;
+
+    global $config;
+    $model_config = $config[APPLICATION_ENV];
+    $db_host = $model_config['db']['host'];
+    $db_name = $model_config['db']['dbname'];
+    $db_user = $model_config['db']['username'];
+    $db_pass = $model_config['db']['password'];
+
     $conn = mysqli_connect('p:' . $db_host, $db_user, $db_pass, $db_name) or die("Error - connecting to db" . $conn . mysqli_error($conn));
     $GLOBALS['conn'] = $conn;
 
@@ -362,6 +370,10 @@ function move_business_info($businessID, $from_db, $to_db) {
 }
 
 // main block
+if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+    getenv('EnvMode') ? getenv('EnvMode') : 'production');
+
+
 $cmd = $_REQUEST['cmd'];
 $return_result = array();
 header('Content-type: application/json');

@@ -1,4 +1,7 @@
 <?php
+
+// Obsolete
+
 include '../include/config_db.inc.php';
 
 function removeslashes($string)

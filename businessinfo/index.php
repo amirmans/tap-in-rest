@@ -1,4 +1,7 @@
 <?php
+
+// obsolete
+
 require_once('db_manager.php');
 
 header('Content-type: application/json');

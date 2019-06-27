@@ -46,10 +46,29 @@ $search_date = $_REQUEST['date'];
 //$date = new DateTime();
 $date = date("Y-m-d H:i:s");
 //$startDateTimeString = $date->format('Y-m-d-H_i_s');
-$err_msg = "Info ---------- $startDateTimeString" . " Calulating geocodes for $search_zipcode on $search_date\n";
+//$err_msg = "Info ---------- $startDateTimeString" . " Calulating geocodes for $search_zipcode on $search_date\n";
+$err_msg = "Info ----------   Calulating geocodes for $search_zipcode on $search_date\n";
 pt_error_log($err_msg);
 
 // Opens a connection to a MySQL server
+//    global $db_host, $db_user, $db_pass, $db_name;
+
+
+
+global $config;
+
+
+if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+    getenv('EnvMode') ? getenv('EnvMode') : 'production');
+
+
+
+$model_config = $config[APPLICATION_ENV];
+$db_host = $model_config['db']['host'];
+$db_name = $model_config['db']['dbname'];
+$db_user = $model_config['db']['username'];
+$db_pass = $model_config['db']['password'];
+
 $connection = new mysqli("localhost", $db_user, $db_pass, $db_name);
 //$connection=mysql_connect (localhost, $username, $password);
 if (!$connection) {
@@ -175,7 +194,7 @@ while ($row = $result->fetch_assoc()) {
       else {
           pt_error_log("Warning - no accurate info from google for $home_phone\n");
           $errorMSg = $row["first_name"] . " " . $row["last_name"] . " Phone: ". $row["home_phone"] . " incorrect address: ". $address;
-          error_log($errorMSg ."\n". $google_geocoding_url . "\n\n", 3, "./logs/bad_bad_addresses_$startDateTimeString.txt");
+          error_log($errorMSg ."\n". $google_geocoding_url . "\n\n", 3, "./logs/bad_bad_addresses");
       }
   } else {
       pt_error_log("Info - Geocodes for $home_phone found in DB\n");
@@ -193,4 +212,3 @@ echo '</markers>';
 $endDateTime = new DateTime();
 pt_error_log("Info ---------- " . $endDateTime->format('Y-m-d H:i:s') . " End of calulating geocodes for $search_zipcode on $search_date\n\n");
 $result->free();
-?>

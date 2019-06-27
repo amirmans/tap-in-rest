@@ -10,7 +10,8 @@ try {
 
     // Are we running in development or production mode? You can easily switch
     // between these two in the Apache VirtualHost configuration.
-    if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV', getenv('APPLICATION_ENV') ? getenv('APPLICATION_ENV') : 'production');
+    if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
+        getenv('EnvMode') ? getenv('EnvMode') : 'production');
 
     // In development mode, we show all errors because we obviously want to
     // know about them. We don't do this in production mode because that might
@@ -159,6 +160,14 @@ class API
         // method handle it. If the command is unknown, then exit with an error
         // message.
         //TODO: change back to _POST
+//        $_REQUEST = json_decode(file_get_contents('php://input'), TRUE);
+        if (empty($_POST)) {
+            $_POST = json_decode(file_get_contents('php://input'), TRUE);
+        }
+        $_REQUEST = $_POST;
+        if (empty ($_REQUEST)) {
+            $_REQUEST = $_GET;
+        }
 //        if (isset($_REQUEST['cmd'])) {
           if (1) {
             switch (trim($_REQUEST['cmd'])) {
@@ -224,7 +233,7 @@ class API
 
         $nickname = $this->getString('nickname', 30, true);
         $password = $this->getString('password', 20, true);
-        $device_token = $this->getString('device_token', 64, true);
+        $device_token = $this->getString('device_token', 155, true);
         $uuid = $this->getString('uuid', 64, true);
         $email = $this->getString('email', 40, true);
         $email_work = $this->getString('email_work', 40, true);
@@ -331,10 +340,7 @@ class API
         $valuesStatement = $valuesStatement . ", ?";
       }
 
-/**
- * Sometimes the user wants to set the work email to an empty string, so this is a possible condition
- */
-//      if (!empty($email_work)) {
+      if (!empty($email_work)) {
         $executeArray[] = $email_work;
         $sqlStatement = $sqlStatement . ",email2";
         if (strlen($updateStatement) > 1) {
@@ -343,7 +349,7 @@ class API
         $updateStatement = $updateStatement . "email2 = ?";
         $Update_executeArray[] = $email_work;
         $valuesStatement = $valuesStatement . ", ?";
-//      }
+      }
 
         if ($age_group > - 1) {
             $executeArray[] = $age_group;
@@ -543,9 +549,13 @@ class API
     }
 
     function getInt($fieldName, $optional = false) {
-        $returnVal = trim($_REQUEST[$fieldName]);
+        if (empty($_REQUEST[$fieldName])) {
+            $returnVal = 0;
+        } else {
+            $returnVal = trim($_REQUEST[$fieldName]);
+        }
 
-        if (optional && empty($returnVal) && strlen($returnVal) == 0) {
+        if ($optional && empty($returnVal) && strlen($returnVal) == 0) {
             return -1;
         } else if (empty($returnVal) && strlen($returnVal) == 0) {
             exitWithHttpError(408, "No $fieldName was passed");
@@ -559,11 +569,18 @@ class API
     // is not a valid UTF-8 string, or it is too long, the script exits with
     // an error message.
     function getString($name, $maxLength, $optional = false) {
-        $string = trim($_REQUEST[$name]);
-        $string = str_replace('"', '', $string);
+        if (empty($_REQUEST[$name]))  {
+            $string = "";
+        } else {
+            $string = $_REQUEST[$name];
+        }
+
         if ($optional && empty($string)) {
             return $string;
         }
+        $string = trim($_REQUEST[$name]);
+        $string = str_replace('"', '', $string);
+
         if (!isset($_REQUEST[$name])) exitWithHttpError(406, "Missing $name");
 
         if (!isValidUtf8String($string, $maxLength, false)) exitWithHttpError(407, "Invalid $name");
