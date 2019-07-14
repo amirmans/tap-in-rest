@@ -53,14 +53,18 @@ function connectToDB()
 {
 //    global $db_host, $db_user, $db_pass, $db_name;
 
+    // echo APPLICATION_ENV." ";
     global $config;
     $model_config = $config[APPLICATION_ENV];
     $db_host = $model_config['db']['host'];
     $db_name = $model_config['db']['dbname'];
     $db_user = $model_config['db']['username'];
     $db_pass = $model_config['db']['password'];
+    $db_port = $model_config['db']['port'];
 
-    $conn = mysqli_connect('p:' . $db_host, $db_user, $db_pass, $db_name) or die("Error - connecting to db" . $conn . mysqli_error($conn));
+    // echo "$db_host $db_user $db_name\n";
+    // not using the permanent connection any more as I understand it is not recommended for the web
+    $conn = mysqli_connect($db_host, $db_user, $db_pass, $db_name, $db_port) or die("Error - connecting to db" . $conn . mysqli_error($conn));
     $GLOBALS['conn'] = $conn;
 
     return $conn;
@@ -1091,7 +1095,7 @@ function helper_order_information($status, $days_before_today) {
 
  $query ="select TIMESTAMPDIFF(MINUTE,o.`date`,NOW()) as minutes_ago, DATE_FORMAT(o.`date`,'%H:%i') as order_time_of_today, o.order_id, biz.`name` as business_name, biz.short_name as business_short_name
         , ba.sms_no as business_notification_sms, ba.email as business_notification_email,  o.total
-        , o.subtotal, o.consumer_id, cp.nickname as consumer_nickname, cp.email1 as consumer_email, o.cc_last_4_digits, cc.zip_code, os.`status_name` as order_status
+        , o.subtotal, o.consumer_id, o.order_type, cp.nickname as consumer_nickname, cp.email1 as consumer_email, o.cc_last_4_digits, cc.zip_code, os.`status_name` as order_status
   from `order` o
   left join business_customers biz on biz.businessID = o.business_id
   left join order_status_map os on os.`status` = o.`status`

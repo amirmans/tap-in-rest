@@ -9,16 +9,17 @@ $config = array(
             'dbname'   => 'artdoost_local_tapin',
             'username' => 'artdoost_dbadmin',
             'password' => 'id0ntknow',
+            'port'     => '3306'
         ),
     ),
 
     'testing' => array(
         'db' => array(
-            'host'     => 'localhost',
-            'dbname'   => 'artdoost_stage_tapin',
-            'username' => 'artdoost_dbadmin',
-            'password' => 'id0ntknow'
-
+            'host'     => $_SERVER['RDS_HOSTNAME'],
+            'dbname'   => $_SERVER['RDS_DB_NAME'],
+            'username' => $_SERVER['RDS_USERNAME'],
+            'password' => $_SERVER['RDS_PASSWORD'],
+            'port'     => $_SERVER['RDS_PORT']
         ),
     ),
 
@@ -28,7 +29,8 @@ $config = array(
             'host'     => 'localhost',
             'dbname'   => 'artdoost_tapin_prod_v2',
             'username' => 'artdoost_tapin',
-            'password' => 'mfood0716!!'
+            'password' => 'mfood0716!!',
+            'port'     => '3306'
         ),
     )
 );

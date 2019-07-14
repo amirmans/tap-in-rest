@@ -4,18 +4,19 @@
 
 
     $application_env = getenv('EnvMode');
+    $testingHost = $_SERVER['APP_HOSTNAME']."/merchants/";
     if ($application_env ==="development") {
         define('BaseURL', 'http://tapin-servers.dv/');
         define('MerchantsBaseURL', 'http://tapin-servers.dv/merchants/');
-    } else if ($application_env ==='staging') {
-        define('BaseURL', 'http://tapforall.com/staging/');
-        define('MerchantsBaseURL', 'http://tapforall.com/staging/merchants/');
+    } else if ($application_env ==='testing') {
+      define('BaseURL', $_SERVER['APP_HOSTNAME']);
+      define('MerchantsBaseURL', $testingHost);
     } else if ($application_env ==='production') {
         define('BaseURL', 'https://tapforall.com/merchants/');
         define('MerchantsBaseURL', 'https://tapforall.com/merchants/tap-in-adminpanel/');
     } else {
-        define('BaseURL', 'http://tapforall.com/staging/');
-        define('MerchantsBaseURL', 'http://tapforall.com/staging/merchants/');
+        define('BaseURL', $_SERVER['APP_HOSTNAME']);
+        define('MerchantsBaseURL', $testingHost);
     }
 
     //order status
