@@ -1346,7 +1346,12 @@ function assign_points_to_uid($consumer_id, $points, $business_id) {
 if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
     getenv('EnvMode') ? getenv('EnvMode') : 'production');
 
-$cmd = $_REQUEST['cmd'];
+if (!empty($_REQUEST['cmd'])) {
+    $cmd = $_REQUEST['cmd'];
+}
+else {
+    $cmd = "";
+}
 $return_result = array();
 header('Content-type: application/json');
 
