@@ -18,13 +18,15 @@ try {
     // expose critical details of our app or our database. Critical PHP errors
     // will still be logged in the PHP and Apache error logs, so it's always
     // a good idea to keep an eye on them.
-    if (APPLICATION_ENV == 'development') {
-        error_reporting(E_ALL | E_STRICT);
-        ini_set('display_errors', 'on');
-    } else {
-        error_reporting(0);
-        ini_set('display_errors', 'off');
-    }
+    //
+    /*  This was producing errors and notices to go the respose json. Making debuging difficult.
+    // if (APPLICATION_ENV == 'development') {
+    //     error_reporting(E_ALL | E_STRICT);
+    //     ini_set('display_errors', 'on');
+    // } else {
+    //     error_reporting(0);
+    //     ini_set('display_errors', 'off');
+    // }
 
     // Load the config file. I prefer to keep all configuration settings in a
     // separate file so you don't have to mess around in the main code if you
