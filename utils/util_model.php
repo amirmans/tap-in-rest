@@ -103,14 +103,14 @@ function move_business_info($businessID, $from_db, $to_db) {
 
   deleteAllProductRelatedInfo ($businessID, $to_db);
 
-  $business_query = "INSERT INTO $to_db.business_customers SELECT * FROM $from_db.business_customers 
+  $business_query = "INSERT INTO $to_db.business_customers SELECT * FROM $from_db.business_customers
   where businessID = $businessID";
   $conn = connectToDB();
   $conn->set_charset("utf8");
   $conn->query($business_query);
   $new_business_id = mysqli_insert_id($conn);
     if ($new_business_id <=0 ) {
-        $business_query= "select businessID from  $to_db.business_customers where `name` =  (SELECT 
+        $business_query= "select businessID from  $to_db.business_customers where `name` =  (SELECT
         `name` FROM $from_db.business_customers WHERE businessID = $businessID);";
 
         $result = getDBresult($business_query);
@@ -122,7 +122,7 @@ function move_business_info($businessID, $from_db, $to_db) {
     }
 
     //product_option_category
-    $select_from_option_category_query = "SELECT `business_id`, `name`, `desc`, `only_choose_one`, `listing_order`, `product_option_category_id` 
+    $select_from_option_category_query = "SELECT `business_id`, `name`, `desc`, `only_choose_one`, `listing_order`, `product_option_category_id`
     from $from_db.`product_option_category` where `business_id` = $businessID;";
     $result = $conn->query($select_from_option_category_query);
 
@@ -130,7 +130,7 @@ function move_business_info($businessID, $from_db, $to_db) {
     $product_option_category_id = array();
     while ($resultRow = mysqli_fetch_assoc($result)) {
         $product_option_category_name = $resultRow['name'];
-        $select_to_option_category_query = "SELECT * from $to_db.`product_option_category` 
+        $select_to_option_category_query = "SELECT * from $to_db.`product_option_category`
         where `business_id` = $new_business_id and `name` = \"$product_option_category_name\";";
         $to_db_result = getDBresult($select_to_option_category_query);
         $product_option_category_name =  $conn->real_escape_string($product_option_category_name);
@@ -141,8 +141,8 @@ function move_business_info($businessID, $from_db, $to_db) {
             $category_listing_order = $resultRow['listing_order'];
 
             $insert_query = "insert into $to_db.product_option_category ( `business_id`, `name`, `desc`
-            , `only_choose_one`, `listing_order`) 
-            values ( $businessID, '$product_option_category_name', '$category_desc', '$category_only_choose_one', 
+            , `only_choose_one`, `listing_order`)
+            values ( $businessID, '$product_option_category_name', '$category_desc', '$category_only_choose_one',
             '$category_listing_order'); ";
             $conn->query($insert_query);
             $new_product_option_category_id = mysqli_insert_id($conn);
@@ -175,15 +175,15 @@ function move_business_info($businessID, $from_db, $to_db) {
         $new_foreign_key = get_new_foreign_key($resultRow["product_option_category_id"]
             , $product_option_category_ids, "from_db", "to_db");
 
-        $select_to_option_query = "SELECT * from $to_db.`option` 
-        where `business_id` = $new_business_id and `name` = '$option_name' and price='$option_price' 
+        $select_to_option_query = "SELECT * from $to_db.`option`
+        where `business_id` = $new_business_id and `name` = '$option_name' and price='$option_price'
         and description = '$option_description' and availability_status = '$option_availability_status'
         and `product_option_category_id` = '$new_foreign_key';";
         $to_db_result = getDBresult($select_to_option_query);
 
         if (empty($to_db_result)) {
 
-            $insert_query = "INSERT INTO $to_db.`option`( `business_id` , `product_option_category_id` , `name` 
+            $insert_query = "INSERT INTO $to_db.`option`( `business_id` , `product_option_category_id` , `name`
             ,`price` ,`description` , `availability_status`)
             values ( '$new_business_id', '$new_foreign_key' , '$option_name' ,'$option_price', '$option_description'
             , '$option_availability_status'); ";
@@ -196,7 +196,7 @@ function move_business_info($businessID, $from_db, $to_db) {
             $option_id["to_db"] = $new_option_id;
         } else if (empty($to_db_result[0]["product_option_category_id"])) {
             $to_db_option_id =  $to_db_result[0]["option_id"];
-            $update_query = "update $to_db.`option` set `product_option_category_id` = '$new_foreign_key' 
+            $update_query = "update $to_db.`option` set `product_option_category_id` = '$new_foreign_key'
             where `option_id` = '$to_db_option_id';";
             $conn->query($update_query);
             $option_id["to_db"] =  $to_db_option_id;
@@ -217,7 +217,7 @@ function move_business_info($businessID, $from_db, $to_db) {
     $product_category_id = array();
     while ($resultRow = mysqli_fetch_assoc($result)) {
         $product_category_name = $resultRow['category_name'];
-        $select_to_product_category_query = "SELECT * from $to_db.`product_category` 
+        $select_to_product_category_query = "SELECT * from $to_db.`product_category`
         where `business_id` = $new_business_id and `name` = \"$product_category_name\";";
         $to_db_result = getDBresult($select_to_product_category_query);
 
@@ -227,8 +227,8 @@ function move_business_info($businessID, $from_db, $to_db) {
             $product_category_listing_order = $resultRow['listing_order'];
 
             $insert_query = "insert into $to_db.product_category ( `business_id`, `category_name`, `desc`
-            , `icon_url`, `listing_order`) 
-            values ( $businessID, '$product_category_name', '$product_category_desc', '$product_category_icon_url', 
+            , `icon_url`, `listing_order`)
+            values ( $businessID, '$product_category_name', '$product_category_desc', '$product_category_icon_url',
             '$product_category_listing_order'); ";
             $conn->query($insert_query);
             $new_product_category_id = mysqli_insert_id($conn);
@@ -271,9 +271,9 @@ function move_business_info($businessID, $from_db, $to_db) {
         $new_product_category_id = get_new_foreign_key($resultRow["product_category_id"]
             ,$product_category_ids, "from_db", "to_db");
 
-        $select_product_query = "SELECT * from $to_db.`product` 
+        $select_product_query = "SELECT * from $to_db.`product`
         where `businessID` = $new_business_id and `name` = '$product_name' and `product_category_id` = '$new_product_category_id'
-        and price='$product_price' 
+        and price='$product_price'
         and short_description = '$product_short_description' and availability_status = '$product_availability_status';";
         $to_db_result = getDBresult($select_product_query);
 
@@ -304,7 +304,7 @@ function move_business_info($businessID, $from_db, $to_db) {
     }
 
     // product_option
-    $select_from_product_option_query = "select o.* from $from_db.product_option o left join $from_db.product p 
+    $select_from_product_option_query = "select o.* from $from_db.product_option o left join $from_db.product p
     on o.product_id = p.product_id where p.businessID = $businessID;";
     $result = $conn->query($select_from_product_option_query);
 
@@ -329,8 +329,8 @@ function move_business_info($businessID, $from_db, $to_db) {
             echo  "Wrong!". PHP_EOL;
         }
 
-        $select_to_product_option_query = "SELECT * from $to_db.`product_option` 
-        where `name` = '$product_option_name' and price='$product_option_price' 
+        $select_to_product_option_query = "SELECT * from $to_db.`product_option`
+        where `name` = '$product_option_name' and price='$product_option_price'
         and description = '$product_option_description' and availability_status = '$product_option_availability_status'
         and `product_option_category_id` = '$new_product_option_category_id'
         and `product_id` = '$new_product_id'

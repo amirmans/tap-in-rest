@@ -19,7 +19,7 @@ try {
     // will still be logged in the PHP and Apache error logs, so it's always
     // a good idea to keep an eye on them.
     //
-    /*  This was producing errors and notices to go the respose json. Making debuging difficult.
+    /*  This was producing errors and notices to go the response json. Making debugging difficult.*/
     // if (APPLICATION_ENV == 'development') {
     //     error_reporting(E_ALL | E_STRICT);
     //     ini_set('display_errors', 'on');

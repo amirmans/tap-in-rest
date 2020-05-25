@@ -43,4 +43,64 @@ function stripslashes_deep($value)
     return $value;
 }
 
-?>
+function calc_pickup_cutoff_date(&$dateArr, $int_weekday, $no_days) {
+    $weekday ="";
+    switch ($int_weekday) {
+        case 1:
+            $weekday = "monday";
+            break;
+        case 2:
+            $weekday = "tuesday";
+            break;
+        case 3:
+            $weekday = "wednesday";
+            break;
+        case 4:
+            $weekday = "Thursday";
+            break;
+        case 5:
+            $weekday = "Friday";
+            break;
+        case 6:
+            $weekday = "saturday";
+            break;
+        case 0:
+            $weekday = "sunday";
+            break;
+    }
+
+    // $date  = date("Y M D", mktime(0, 0, 0, date("m"), 0, 2020));
+    $pickup_date = date_create();
+    $cutoff_date = date_create();
+
+    if ($no_days <= 0) {
+        $sign = "";
+    }
+    else {
+        $sign = "+";
+    }
+    $i = 0;
+    While ($i < 2 ) {
+        if ($i == 1) {
+            $weekday = $weekday . " + 1 week";
+        }
+        $pickup_date = date('m/d/y', strtotime($weekday));
+
+        $strDate = "$pickup_date " . $sign . ($no_days) . " day";
+        $cutoff_date = date("m/d/y", strtotime($strDate));
+
+        $today = date('m/d/Y');
+        if ($today == $cutoff_date) {
+            break;
+        }
+        else if ($today > $cutoff_date) {
+            $i++;
+        }
+        else {
+            break;
+        }
+    }
+
+    $dateArr['pickup_date'] = $pickup_date;
+    $dateArr['cutoff_date'] = $cutoff_date;
+} //function
