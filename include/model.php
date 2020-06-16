@@ -988,17 +988,15 @@ function get_consumer_default_cc($consumer_id) {
 }
 
 function remove_cc($consumer_id, $ccDataArr) {
-    foreach ($ccDataArr as $ccData) {
-        $cc_no = $ccData["cc_no"];
-        $exp_date = $ccData["expiration_date"];
-        $cvv = $ccData["cvv"];
-        $zip = $ccData["zip_code"];
+    $cc_no = $ccDataArr["cc_no"];
+    $exp_date = $ccDataArr["expiration_date"];
+    $cvv = $ccDataArr["cvv"];
+    $zip = $ccDataArr["zip_code"];
 
-        $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= '$exp_date'
+    $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= '$exp_date'
         and cvv=$cvv and zip_code=$zip;";
 
-        getDBresult($query);
-    }
+    getDBresult($query);
 
     return 1;
 }
@@ -1439,6 +1437,10 @@ function assign_points_to_uid($consumer_id, $points, $business_id) {
 
 // main block
 
+foreach (getallheaders() as $name => $value) {
+    $tempArr[$name] = $value;
+}
+
 if (!defined('APPLICATION_ENV')) define('APPLICATION_ENV',
     getenv('EnvMode') ? getenv('EnvMode') : 'production');
 
@@ -1737,6 +1739,9 @@ do {
 
         case 15:
             $request = json_decode(file_get_contents('php://input'), TRUE);
+            if (empty($request)) {
+                $request = $_REQUEST;
+            }
             $cmd_post = $request["cmd"];
             $pos = stripos($cmd_post, "remove_cc");
             if ($pos !== false) {
