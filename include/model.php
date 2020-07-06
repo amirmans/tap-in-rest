@@ -89,8 +89,10 @@ function getDBresult($query)
     $result = $conn->query($query);
 
     $resultArr = array();
-    while ($row = mysqli_fetch_assoc($result)) {
-        $resultArr[] = $row;
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $resultArr[] = $row;
+        }
     }
     return $resultArr;
 }
@@ -449,7 +451,7 @@ function save_cc_info($request) {
         die;
     }
 
-    if ($request["zip_code"] == 0 || $request["zip_code"] == NULL) {
+    if (empty($request["zip_code"])  || strlen($request["zip_code"]) < 5)  {
         $return['status'] = -13;
         $return['msg'] = "Please enter zip code";
         echo json_encode($return);
@@ -531,7 +533,7 @@ function previous_order($business_id, $consumer_id) {
 function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amount, $points_dollar_amount
                     , $tax_amount, $cc_last_4_digits, $orderData, $note, $consumer_delivery_id
                     , $promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount
-                    , $pd_locations_id, $pd_time, $pd_instruction, $order_type) {
+                    , $pd_locations_id, $pd_time, $pd_instruction, $order_type, $corp_id) {
     if (empty($note)) {
         $note = "";
     }
@@ -584,6 +586,10 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     if (empty($order_type)) {
         $order_type = 0;
     }
+
+    if (empty($corp_id)) {
+        $corp_id = 0;
+    }
     // although total is given, we want to calculate it now
     // later we will fix the bug in the client, or wont ask for  the total
     $total = $subtotal - $promotion_discount_amount + $pd_charge_amount + $tip_amount + $tax_amount
@@ -623,11 +629,11 @@ function save_order($business_id, $customer_id/*, $total*/, $subtotal, $tip_amou
     $insert_query = "insert into `order` (business_id, consumer_id, total, subtotal, tip_amount,
       points_dollar_amount, tax_amount, cc_last_4_digits, status, no_items, note, date, consumer_delivery_id
       , promotion_code, promotion_discount_amount, pd_mode, pd_charge_amount/*, delivery_charge_amount*/, pd_locations_id
-      , pd_time, pd_instruction, order_type)
+      , pd_time, pd_instruction, order_type, order_corp_id)
     Values ($business_id, $customer_id, $total, $subtotal, $tip_amount, $points_dollar_amount, $tax_amount,
       '$cc_last_4_digits', 1, $no_items_in_order, '$note', now(), $consumer_delivery_id
       ,$promotion_code, $promotion_discount_amount, $pd_mode, $pd_charge_amount/*, $pd_charge_amount*/, $pd_locations_id
-      , '$pd_time', '$pd_instruction', '$order_type');";
+      , '$pd_time', '$pd_instruction', '$order_type', '$corp_id');";
 
     $conn->query($insert_query);
 
@@ -993,8 +999,8 @@ function remove_cc($consumer_id, $ccDataArr) {
     $cvv = $ccDataArr["cvv"];
     $zip = $ccDataArr["zip_code"];
 
-    $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= $cc_no and expiration_date= '$exp_date'
-        and cvv=$cvv and zip_code=$zip;";
+    $query = "delete from consumer_cc_info where consumer_id = $consumer_id and cc_no= '$cc_no' and expiration_date= '$exp_date'
+        and cvv=$cvv and zip_code='$zip';";
 
     getDBresult($query);
 
@@ -1483,12 +1489,15 @@ do {
             if ($pos !== false) {
                 $pointsToAdd = 0;
 
+                if (empty($request['corp_id']) ) {
+                    $request['corp_id'] = 0;
+                }
                 $order_id = save_order($request["business_id"], $request["consumer_id"]/*, $request["total"]*/
                     ,$request["subtotal"], $request["tip_amount"], $request["points_dollar_amount"], $request["tax_amount"]
                     ,$request["cc_last_4_digits"], $request["data"], $request["note"], $request["consumer_delivery_id"]
                     ,$request["promotion_code"],$request["promotion_discount_amount"]
                     ,$request["pd_mode"], $request["pd_charge_amount"], $request["pd_locations_id"], $request['pd_time']
-                    , $request['pd_instruction'], $request['order_type']);
+                    , $request['pd_instruction'], $request['order_type'], $request['corp_id']);
                 // for backward compatibility
                 if ($order_id > 0) {
                   if (empty($request["subtotal"])) {
@@ -1751,7 +1760,7 @@ do {
                 $final_result["message"] = "";
                 echo json_encode($final_result);
 
-                break2;
+                break 2;
             }
             break;
 
