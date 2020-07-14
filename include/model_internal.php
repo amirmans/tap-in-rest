@@ -113,6 +113,144 @@ function insert_business_keywords($market_name) {
     return ($return_data);
 }
 
+
+function setActiveVendorsForNextMarketDay() {
+    $corp_data = array();
+
+    $corp_query = "select * from corp where domain <> 'default' and active = 1;";
+    $corp_result = getDBresult($corp_query);
+
+    if (!empty($corp_result)) {
+        $corps_data['success'] = 0;
+    } else {
+        $corps_data['success'] = -1;
+        // nothing is found, we add our default corp for people who want to see what they are missing :-)
+        $corp_query = "select * from corp where domain = 'default'";
+        $corp_result = getDBresult($corp_query);
+    }
+
+    // modify for the client apps
+    $dateArr = array();
+    foreach ($corp_result as &$row) {
+        $weekday = $row['delivery_week_days'];
+        $no_days = $row['cutoff_no_days'];
+        calc_pickup_cutoff_date($dateArr, $weekday,$no_days);
+        $time_string =  date('h:i', strtotime($row["delivery_time"]));
+        $row["pickup_date"] = $dateArr["pickup_date"] . " " . $time_string;
+        $time_string =  date('h:i', strtotime($row["cutoff_time"]));
+        $row["cutoff_date"] = $dateArr["cutoff_date"] . " " . $time_string;
+    }
+    $corps_data['data'] = $corp_result;
+    $corps_data['success'] = 1;
+
+    return ($corps_data);
+}
+
+
+function is_business_available_on_next_market_day($corp_id,$business_id) {
+    $today = date('m/d/yy');
+    $availability_query = "select availability_dates from business_availability where corp_id = $corp_id and business_id = $business_id;";
+    $availability_arr = getDBresult($availability_query);
+    $availability_dates = $availability_arr[0]['$availability_dates'];
+
+    $array[] = str_getcsv($availability_dates);
+    foreach($array[0] as $value) //loop over values
+    {
+        echo $value  . PHP_EOL;
+        $temp_avail_date = strtotime($value);
+        if ($temp_avail_date > $today) {
+            echo " got it.";
+        }
+    }
+}
+//function partner_etl_all_businesses_availabilities_for_corp($external_corp_id) {
+//    $string = 'foo, bar, baz.';
+//    $string = preg_replace('/\.$/', '', $string); //Remove dot at end if exists
+//    $array2 = explode(', ', $string); //split string into array seperated by ', '
+//    $array = array();
+//    $array[] = str_getcsv($line);
+//    foreach($array as $value) //loop over values
+//    {
+//        echo $value . PHP_EOL; //print value
+//    }
+//}
+
+function partner_etl_all_businesses_availabilities_for_corp($corp_external_id) {
+    $corp_query = "select corp_id, merchant_ids from corp where external_id= $corp_external_id;";
+    $business_ids_arr = getDBresult($corp_query);
+    $corp_id = $business_ids_arr[0]['corp_id'];
+    $busiesses_set = $business_ids_arr[0]['merchant_ids'];
+    $busiesses_set = preg_replace('/\.$/', '', $busiesses_set); //Remove dot at end if exists
+    $array2 = explode(', ', $busiesses_set); //split string into array seperated by ', '
+    $array = array();
+    $array[] = str_getcsv($busiesses_set);
+    foreach($array[0] as $value) //loop over values
+    {
+        $biz_query = "select external_id from business_customers where businessID = $value;";
+        $external_id_arr = getDBresult($biz_query);
+        $external_id = $external_id_arr[0]['external_id'];
+        partner_etl_business_availabilities($corp_external_id,$corp_id, $value, $external_id);
+        echo $value  . PHP_EOL;
+    }
+}
+
+
+function partner_etl_business_availabilities($external_corp_id, $corp_id, $internal_business_id, $external_vendor_id) {
+    $availability_dates =
+    file_get_contents("http://mailer.enofileonline.com/api/GetVendorDatesForMarket?marketID=$external_corp_id&vendorID=$external_vendor_id");
+    $json_available_dates = json_decode($availability_dates);
+    $csv_availability_dates = "";
+    foreach($json_available_dates as $key => $value)
+    {
+//        $temp =  'Your key is: '.$key.' and the value of the key is:'.$value;
+        if ($key < 1) {
+            $csv_availability_dates = $value;
+            continue;
+        }
+        $csv_availability_dates = $csv_availability_dates . ",". $value;
+    }
+    $prepared_stmt = "INSERT INTO business_availability (business_id, corp_id, availability_dates) VALUES (?,?,?) 
+                    ON DUPLICATE KEY UPDATE availability_dates = VALUES(availability_dates);";
+    $conn = connectToDB();
+    $prepared_query = $conn->prepare($prepared_stmt);
+    $rc1 = $prepared_query->bind_param('iis', $internal_business_id, $corp_id
+        , $csv_availability_dates);
+    $rc2 = $prepared_query->execute();
+
+    return (json_decode($rc2));
+}
+
+function partner_etl_products_for_vendor($external_corp_id, $internal_business_id, $external_vendor_id) {
+    $jsonData =
+        file_get_contents("http://mailer.enofileonline.com/api/getvendorproductsformarket?vendorID=$external_vendor_id&marketID=$external_corp_id");
+    $decoded_dataArray = json_decode($jsonData, true);
+    $conn = connectToDB();
+    foreach ($decoded_dataArray as $row) {
+        $external_id = $row["productID"];
+        $name = $row["product"];
+        if (empty($row["info"])) {
+            $row["info"] ="";
+        }
+        $short_description = $row["info"];
+        if (empty($row["keywords"])) {
+            $row["keywords"]="";
+        }
+        $keywords = $row["keywords"];
+        $prepared_stmt = "INSERT INTO product (businessID, external_id, `name`
+               ,short_description) VALUES (?,?,?,?) 
+                ON DUPLICATE KEY UPDATE
+                    short_description = VALUES(short_description),
+                    short_description = VALUES(`name`);";
+        $prepared_query = $conn->prepare($prepared_stmt);
+        $rc1 = $prepared_query->bind_param('isss', $internal_business_id, $external_id
+            ,$name, $short_description);
+
+        $rc2 = $prepared_query->execute();
+    }
+
+    return $rc2;
+}
+
 function partner_etl() {
     $jsonData = file_get_contents("https://mailer.enofileonline.com/api/GetMarkets");
     $decoded_dataArray = json_decode($jsonData, true);
@@ -156,6 +294,9 @@ function partner_etl() {
             $rc2 = $prepared_query->execute();
             if ($rc2) {
                 $merchant_ids = $merchant_ids . "," . $prepared_query->insert_id;
+                $internal_business_id = $prepared_query->insert_id;
+                partner_etl_business_availabilities($corp_external_id, $internal_business_id, $external_id);
+                partner_etl_products_for_vendor($corp_external_id, $internal_business_id, $external_id);
             }
         }
 
@@ -287,6 +428,54 @@ header('Content-type: application/json');
                 $order_id = filter_input(INPUT_GET, 'order_id');
                 $business_id = filter_input(INPUT_GET, 'business_id');
                 $result = partner_etl();
+                echo json_encode( $result);
+
+//                break 2;
+            }
+            break;
+        case 'partner_etl_products_for_vendor':
+            $pos = stripos($cmd, "partner_etl_products_for_vendor");
+            if ($pos !== false) {
+                $external_corp_id = filter_input(INPUT_GET, 'external_corp_id');
+                $external_vendor_id = filter_input(INPUT_GET, 'external_vendor_id');
+                $internal_business_id = filter_input(INPUT_GET, 'internal_business_id');
+                $result = partner_etl_products_for_vendor($external_corp_id, $internal_business_id, $external_vendor_id);
+                echo json_encode( $result);
+
+//                break 2;
+            }
+            break;
+
+        case 'partner_etl_all_businesses_availabilities_for_corp':
+            $pos = stripos($cmd, "partner_etl_all_businesses_availabilities_for_corp");
+            if ($pos !== false) {
+                $external_corp_id = filter_input(INPUT_GET, 'external_corp_id');
+                $result = partner_etl_all_businesses_availabilities_for_corp($external_corp_id);
+                echo json_encode($result);
+
+//                break 2;
+            }
+            break;
+
+        case 'partner_etl_business_availabilities':
+            $pos = stripos($cmd, "partner_etl_business_availabilities");
+            if ($pos !== false) {
+                $external_corp_id = filter_input(INPUT_GET, 'external_corp_id');
+                $external_vendor_id = filter_input(INPUT_GET, 'external_vendor_id');
+                $internal_business_id = filter_input(INPUT_GET, 'internal_business_id');
+                $result = partner_etl_business_availabilities($external_corp_id, $internal_business_id, $external_vendor_id);
+                echo json_encode( $result);
+
+//                break 2;
+            }
+            break;
+
+        case 'is_business_available_on_next_market_day':
+            $pos = stripos($cmd, "is_business_available_on_next_market_day");
+            if ($pos !== false) {
+                $corp_id = filter_input(INPUT_GET, 'corp_id');
+                $business_id = filter_input(INPUT_GET, 'business_id');
+                $result = is_business_available_on_next_market_day($corp_id,$business_id);
                 echo json_encode( $result);
 
 //                break 2;
