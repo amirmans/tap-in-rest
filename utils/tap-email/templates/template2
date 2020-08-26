@@ -1,0 +1,20 @@
+Hi <?php echo $firstname ?>,
+<br>
+Welcome to the Tap4markets App!  We are glad you decided to work with us at the <?php echo $market_name?>.  We have an easy onboarding process. There are three simple steps:
+<br>
+1. Update your Product List with prices and units at the Tap4markets vendor website.  (I will send your company specific URL and password for the website along with a tutorial so you can get started).  Please send an email to me to confirm you have reviewed the tutorial and updated your product list.
+
+2.  Open a payment processor (Stripe) account.  (Instructions for Stripe will be emailed shortly).
+
+3.  Review the video for fulfilling orders. (The video will be emailed when you are all set up to go live).
+<br>
+Once these three steps are complete, we will verify your stripe key and you can go live.  The pre-order cut off time for orders to be picked up at the market will be <?php echo $pickup_date_time?>.   Any orders that come in after that will be for the following week's market.  I will be using the product list from Manage My Market to fill in your product list.  If you have a more current product list typed or written down, please send it to me ASAP and I will incorporate it into the product list for you.
+<br>
+Please let me know if you have any questions. I am looking forward to working with you to boost your sales at the market!
+By the  way your url is: <?php echo $vendor_link ?>
+Please visit <a href=" <?php echo $surveyLink ?> ">This Link</a> to view your upvotes
+--
+Sincerely,
+
+Alana Shirk-Amirmansoury
+

@@ -1,0 +1,7 @@
+Welcome to my site,
+
+Dear <?php echo $Firstname ?>, You have been registered on our site.
+
+Please visit <a href="<?php echo $LoginUrl ?>">This Link</a> to view your upvotes
+
+Regards.

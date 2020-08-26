@@ -51,8 +51,10 @@ function getDBresult($query)
     $result = $conn->query($query);
 
     $resultArr = array();
-    while ($row = mysqli_fetch_assoc($result)) {
-        $resultArr[] = $row;
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $resultArr[] = $row;
+        }
     }
     return $resultArr;
 }
@@ -113,7 +115,105 @@ function insert_business_keywords($market_name) {
     return ($return_data);
 }
 
+/**
+ * @return mixed
+ * Process of activating a business for a corp (vendor for a market):
+ * 1. get all the data from corp and business_customer table
+ * 2. find the business that are marked active
+ * 3. get the user_ids to build the directory and the url
+ * 4. both url and the directory are sub to the parent corp in the corp table
+ * 5. cope index.php to the created sub directories
+ * 6. build the passwords (site and stripe), encrypt and  update the business_customers table
+ * 7. Also set the beta flag
+ * 8. Anything wrong: log the error and continue
+ */
+function activate_businesses_for_parent_corp($corp_parent_name, $pwd_prefix, $stripe_pass_prefix, $index_name) {
+    $corp_query = "select * from corp where parent_corp = '$corp_parent_name';";
+    $corp_result = getDBresult($corp_query);
+    $merchant_ids ="";
+    foreach ($corp_result as $corp) {
+        $merchant_ids .= $corp['merchant_ids'].",";
+    }
 
+    $dir1 = getenv('CodeIgniterRootDirectory');
+    chdir(dirname($dir1, 1));
+    if (!file_exists($corp_parent_name)) {
+        mkdir($corp_parent_name, 0777, true);
+    }
+    chdir($corp_parent_name);
+    $general_copy_dest = getcwd() . '/general_function.php';
+    if (!file_exists($general_copy_dest)) {
+        copy("../general_function.php", $general_copy_dest);
+    }
+    $array[] = str_getcsv($merchant_ids);
+    foreach($array[0] as $value) //loop over values
+    {
+        $biz_query = "select username from business_customers where businessID = $value and active=1;";
+        $user_arr = getDBresult($biz_query);
+        $user_id ="";
+        if (!empty($user_arr)) {
+            $user_id = $user_arr[0]['username'];
+        }
+        if (empty($user_id)) {
+            $result[] = array(
+                'user_id' => "business_id: $value did not have a user ID");
+            continue;
+        }
+
+        try {
+            $business_dir_created =0;
+            if (!file_exists($user_id)) {
+//                echo $user_id . PHP_EOL;
+                $dir = getcwd() . "/". $user_id;
+                $business_dir_created = (mkdir($dir, 0777, true));
+            }
+        }
+        catch(Exception $e) {
+            echo 'Message: ' .$e->getMessage();
+        }
+        $index_copy_dest = getcwd() . '/'. $user_id . '/index.php';
+        if (copy("../index_template.php", $index_copy_dest)) {
+//            echo $user_id .PHP_EOL;
+        }
+        if (($value % 2) == 0) {
+            $stripe_pass_postfix = "??";
+            $pwd_postfix = "?";
+        } else {
+            $stripe_pass_postfix = "!!";
+            $pwd_postfix = "!";
+        }
+        $temp_id = (strlen($user_id)>6)?substr($user_id, 2,3):"mess";
+        $password = $pwd_prefix . $value . $temp_id .$pwd_postfix;
+        $stripe_password = $stripe_pass_prefix .$value .$stripe_pass_postfix;
+
+        // insert the passwords if the fields are empty; we don't want to overwrite the exisitig ones
+        $encrypted_password = md5($stripe_password);
+        $insert_stripe_password_query =
+            "update business_customers set stripe_password = \"$encrypted_password\"
+             where businessID=$value and (stripe_password IS NULL OR LENGTH(stripe_password)=0); ";
+        $stripe_password_created = insertOrUpdateQuery($insert_stripe_password_query);
+
+        $encrypted_password = md5($password);
+        $insert_password_query =
+            "update business_customers set password = \"$encrypted_password\"
+             where businessID=$value and (password IS NULL OR LENGTH(password)=0); ";
+        $password_created = insertOrUpdateQuery($insert_password_query);
+
+        $result[] = array(
+            'user_id' => $user_id
+            , 'password' =>$password
+            ,'stripe_password'=> $stripe_password
+            ,'Business directory created'=>$business_dir_created
+            ,'stripe_password_created'=> $stripe_password_created
+            ,'password_created'=>$password_created
+            );
+    }
+
+    return ($result);
+}
+
+
+//TODO
 function setActiveVendorsForNextMarketDay() {
     $corp_data = array();
 
@@ -209,7 +309,7 @@ function partner_etl_business_availabilities($external_corp_id, $corp_id, $inter
         }
         $csv_availability_dates = $csv_availability_dates . ",". $value;
     }
-    $prepared_stmt = "INSERT INTO business_availability (business_id, corp_id, availability_dates) VALUES (?,?,?) 
+    $prepared_stmt = "INSERT INTO business_availability (business_id, corp_id, availability_dates) VALUES (?,?,?)
                     ON DUPLICATE KEY UPDATE availability_dates = VALUES(availability_dates);";
     $conn = connectToDB();
     $prepared_query = $conn->prepare($prepared_stmt);
@@ -225,19 +325,22 @@ function partner_etl_products_for_vendor($external_corp_id, $internal_business_i
         file_get_contents("http://mailer.enofileonline.com/api/getvendorproductsformarket?vendorID=$external_vendor_id&marketID=$external_corp_id");
     $decoded_dataArray = json_decode($jsonData, true);
     $conn = connectToDB();
+    // if the json the product list is empty, we return falso;
+    $rc1 = false;
+    $rc2 = false;
     foreach ($decoded_dataArray as $row) {
         $external_id = $row["productID"];
         $name = $row["product"];
-        if (empty($row["info"])) {
-            $row["info"] ="";
-        }
-        $short_description = $row["info"];
-        if (empty($row["keywords"])) {
-            $row["keywords"]="";
+        $short_description = $row["info"]; $short_description .= $row["miscInfo"];
+        if (empty($short_description)) {
+            $short_description = "";
         }
         $keywords = $row["keywords"];
+        if (empty($keywords)) {
+            $keywords="";
+        }
         $prepared_stmt = "INSERT INTO product (businessID, external_id, `name`
-               ,short_description) VALUES (?,?,?,?) 
+               ,short_description) VALUES (?,?,?,?)
                 ON DUPLICATE KEY UPDATE
                     short_description = VALUES(short_description),
                     short_description = VALUES(`name`);";
@@ -399,7 +502,7 @@ function validate_stripe_secret_key($secret_key) {
 
 function set_stripe_key_password($business_id, $stripe_key_password) {
     $edcrypted_password = md5($stripe_key_password);
-    $insert_category_query = "update business_customers set stripe_password = \"$edcrypted_password\" where businessID = $business_id";
+    $insert_category_query = "update business_customers set stripe_password = \"$edcrypted_password\", `decoded_stripe_password`=\"$stripe_key_password\" where businessID = $business_id";
     $rt = insertOrUpdateQuery($insert_category_query);
 
     return $rt;
@@ -513,6 +616,17 @@ header('Content-type: application/json');
                 echo json_encode( $result);
 
 //                break 2;
+            }
+            break;
+
+        case 'activate_businesses_for_parent_corp':
+            $pos = stripos($cmd, "activate_businesses_for_parent_corp");
+            if ($pos !== false) {
+                $stripe_password_prefix = filter_input(INPUT_GET, 'stripe_password_prefix');
+                $pwd_prefix = filter_input(INPUT_GET, 'pwd_prefix');
+                $corp_parent_name = filter_input(INPUT_GET, 'corp_parent_name');
+                $result = activate_businesses_for_parent_corp($corp_parent_name, $pwd_prefix,$stripe_password_prefix,"index.php");
+                echo json_encode( $result);
             }
             break;
 
