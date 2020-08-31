@@ -105,7 +105,7 @@ function exitWithHttpError($error_code, $message = '') {
 function isValidUtf8String($string, $maxLength, $allowNewlines = false) {
     if (empty($string) || strlen($string) > $maxLength) return false;
 
-    if (mb_check_encoding($string, 'UTF-8') === false) return false;
+    // if (mb_check_encoding($string, 'UTF-8') === false) return false;
 
     // Don't allow control characters, except possibly newlines
     for ($t = 0; $t < strlen($string); $t++) {
