@@ -12,8 +12,8 @@
       define('BaseURL', $_SERVER['APP_HOSTNAME']);
       define('MerchantsBaseURL', $testingHost);
     } else if ($application_env ==='production') {
-        define('BaseURL', 'https://tapforall.com/merchants/');
-        define('MerchantsBaseURL', 'https://tapforall.com/merchants/tap-in-adminpanel/');
+        define('BaseURL', 'https://tapforall.com/tap-in-servers/merchants/');
+        define('MerchantsBaseURL', 'https://tapforall.com/tap-in-servers/merchants/');
     } else {
         define('BaseURL', $_SERVER['APP_HOSTNAME']);
         define('MerchantsBaseURL', $testingHost);

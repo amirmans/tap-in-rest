@@ -4,7 +4,7 @@ include_once(dirname(dirname(__FILE__)) . '/include/consts_server.inc');
 include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 
 function askServerToPerformATask($functionFile, $params) {
-    $url = MerchantsBaseURL . "$functionFile";
+    $url = getenv('APP_HOSTNAME'). "$functionFile";
 
     $post_params = array();
     foreach ($params as $key => &$val) {

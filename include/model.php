@@ -15,7 +15,7 @@ include_once(dirname(dirname(__FILE__)) . '/include/error_logging/error.php');
 function notify_for_new_order($businessID, $orderID) {
     $params['business_id']=$businessID;
     $params['order_id']= $orderID;
-    $url = MerchantsBaseURL . "new_order_notification.php";
+    $url = getenv('APP_HOSTNAME') . "new_order_notification.php";
 
     $post_params = array();
     foreach ($params as $key => &$val) {
@@ -39,16 +39,6 @@ function notify_for_new_order($businessID, $orderID) {
     fwrite($fp, $out);
     fclose($fp);
 
-
-    // $ch = curl_init();
-    // $merchantNotificationURL = MerchantsBaseURL . "new_order_notification.php";
-    // curl_setopt($ch, CURLOPT_URL, $merchantNotificationURL);
-    // curl_setopt($ch, CURLOPT_POST, 1);
-    // curl_setopt($ch, CURLOPT_POSTFIELDS, "order_id=" . $orderID . "&business_id=" . $businessID);
-    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    // $server_output = curl_exec($ch);
-    // curl_close($ch);
-    // return $server_output;
 }
 /*--------- database functions -----------------*/
 function connectToDB()
@@ -224,9 +214,9 @@ function getAllCorps() {
         $weekday = $row['delivery_week_days'];
         $no_days = $row['cutoff_no_days'];
         calc_pickup_cutoff_date($dateArr, $weekday,$no_days);
-        $time_string =  date('h:ia', strtotime($row["delivery_time"]));
+        $time_string =  date('h:i', strtotime($row["delivery_time"]));
         $row["pickup_date"] = $dateArr["pickup_date"] . " " . $time_string;
-        $time_string =  date('h:ia', strtotime($row["cutoff_time"]));
+        $time_string =  date('h:i', strtotime($row["cutoff_time"]));
         $row["cutoff_date"] = $dateArr["cutoff_date"] . " " . $time_string;
     }
     $corps_data['data'] = $corp_result;
@@ -336,7 +326,7 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
         $product_query = "SELECT distinct product_id, category_icon, product_icon, category_name, s.businessID,  COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
       ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date, s.sales_end_date
       ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
-      ,s.has_option, s.bought_with_rewards, s.more_information
+      ,s.has_option, s.bought_with_rewards, s.more_information, s.listing_order
       ,q.avg as ti_rating, q.consumer_id, s.neighborhood
       from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
       p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
@@ -369,7 +359,8 @@ function products_for_business($businessID, $sub_businesses, $consumer_id)
             ,COALESCE(s.product_keywords, '') as product_keywords, s.SKU, s.name, s.product_category_id
             ,s.short_description, s.long_description, s.availability_status, s.price, s.sales_price, s.sales_start_date
             , s.sales_end_date ,s.pictures, s.detail_information, s.runtime_fields, s.runtime_fields_detail
-            ,s.has_option, s.bought_with_rewards, s.more_information, q.avg as ti_rating, q.consumer_id, s.neighborhood
+            ,s.has_option, s.bought_with_rewards, s.more_information, s.listing_order
+            q.avg as ti_rating, q.consumer_id, s.neighborhood
             from (SELECT distinct p.product_id, p.businessID, p.SKU, p.name, p.product_keywords, p.product_category_id,
             p.short_description, p.long_description, p.price, p.pictures, p.detail_information,
             p.runtime_fields, p.sales_price, p.sales_start_date, p.sales_end_date, p.availability_status,
