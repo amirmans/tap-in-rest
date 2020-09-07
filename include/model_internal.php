@@ -90,8 +90,8 @@ function insert_business_keywords($market_name) {
 		$biz_array = str_getcsv($merchant);
 	}
 
-	$keywords ="";
 	foreach ($biz_array as $biz) {
+        $keywords ="";
 		$query = "select category_name from product_category where business_id = $biz";
 		$result = getDBresult($query);
 		if (count($result)) {
