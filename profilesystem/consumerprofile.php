@@ -170,6 +170,9 @@ class API
         if (empty ($_REQUEST)) {
             $_REQUEST = $_GET;
         }
+        if (empty($_REQUEST['cmd'])) {
+            $_REQUEST['cmd'] ="";
+        }
 //        if (isset($_REQUEST['cmd'])) {
           if (1) {
             switch (trim($_REQUEST['cmd'])) {

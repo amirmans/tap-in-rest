@@ -62,7 +62,8 @@ function insertOrUpdateQuery($query)
 }
 
 
-function get_new_foreign_key($value_to_find, $foreign_key_array, $match_field, $value_field) {
+function get_new_foreign_key($value_to_find, $foreign_key_array, $match_field, $value_field)
+{
 
     foreach ($foreign_key_array as $array_elem) {
         if ($array_elem[$match_field] == $value_to_find)
@@ -72,7 +73,7 @@ function get_new_foreign_key($value_to_find, $foreign_key_array, $match_field, $
     return 0;
 }
 
-function deleteAllProductRelatedInfo ($businessID, $to_db)
+function deleteAllProductRelatedInfo($businessID, $to_db)
 {
 
 //    set @newBusinessID = $businessID;
@@ -99,18 +100,19 @@ function deleteAllProductRelatedInfo ($businessID, $to_db)
 }
 
 
-function move_business_info($businessID, $from_db, $to_db) {
+function move_business_info($businessID, $from_db, $to_db)
+{
 
-  deleteAllProductRelatedInfo ($businessID, $to_db);
+    deleteAllProductRelatedInfo($businessID, $to_db);
 
-  $business_query = "INSERT INTO $to_db.business_customers SELECT * FROM $from_db.business_customers
+    $business_query = "INSERT INTO $to_db.business_customers SELECT * FROM $from_db.business_customers
   where businessID = $businessID";
-  $conn = connectToDB();
-  $conn->set_charset("utf8");
-  $conn->query($business_query);
-  $new_business_id = mysqli_insert_id($conn);
-    if ($new_business_id <=0 ) {
-        $business_query= "select businessID from  $to_db.business_customers where `name` =  (SELECT
+    $conn = connectToDB();
+    $conn->set_charset("utf8");
+    $conn->query($business_query);
+    $new_business_id = mysqli_insert_id($conn);
+    if ($new_business_id <= 0) {
+        $business_query = "select businessID from  $to_db.business_customers where `name` =  (SELECT
         `name` FROM $from_db.business_customers WHERE businessID = $businessID);";
 
         $result = getDBresult($business_query);
@@ -133,7 +135,7 @@ function move_business_info($businessID, $from_db, $to_db) {
         $select_to_option_category_query = "SELECT * from $to_db.`product_option_category`
         where `business_id` = $new_business_id and `name` = \"$product_option_category_name\";";
         $to_db_result = getDBresult($select_to_option_category_query);
-        $product_option_category_name =  $conn->real_escape_string($product_option_category_name);
+        $product_option_category_name = $conn->real_escape_string($product_option_category_name);
 
         if (empty($to_db_result)) {
             $category_desc = $resultRow['desc'];
@@ -152,10 +154,10 @@ function move_business_info($businessID, $from_db, $to_db) {
 
             $product_option_category_id["to_db"] = $new_product_option_category_id;
         } else {
-            $product_option_category_id["to_db"] =  $to_db_result[0]["product_option_category_id"];
+            $product_option_category_id["to_db"] = $to_db_result[0]["product_option_category_id"];
         }
 
-        $product_option_category_id["from_db"] =  $resultRow["product_option_category_id"];
+        $product_option_category_id["from_db"] = $resultRow["product_option_category_id"];
         $product_option_category_ids[] = $product_option_category_id;
     }
 
@@ -190,21 +192,21 @@ function move_business_info($businessID, $from_db, $to_db) {
             $conn->query($insert_query);
             $new_option_id = mysqli_insert_id($conn);
             if ($new_option_id == 0) {
-                echo  "new_option_id is 0 - Could not insert $product_option_category_id in option". PHP_EOL;
+                echo "new_option_id is 0 - Could not insert $product_option_category_id in option" . PHP_EOL;
             }
 
             $option_id["to_db"] = $new_option_id;
         } else if (empty($to_db_result[0]["product_option_category_id"])) {
-            $to_db_option_id =  $to_db_result[0]["option_id"];
+            $to_db_option_id = $to_db_result[0]["option_id"];
             $update_query = "update $to_db.`option` set `product_option_category_id` = '$new_foreign_key'
             where `option_id` = '$to_db_option_id';";
             $conn->query($update_query);
-            $option_id["to_db"] =  $to_db_option_id;
+            $option_id["to_db"] = $to_db_option_id;
         } else {
-            $option_id["to_db"] =  $to_db_result[0]["option_id"];
+            $option_id["to_db"] = $to_db_result[0]["option_id"];
         }
 
-        $option_id["from_db"] =  $resultRow["option_id"];
+        $option_id["from_db"] = $resultRow["option_id"];
         $option_ids[] = $option_id;
 
     }
@@ -233,15 +235,15 @@ function move_business_info($businessID, $from_db, $to_db) {
             $conn->query($insert_query);
             $new_product_category_id = mysqli_insert_id($conn);
             if ($new_product_category_id == 0) {
-                echo  "$new_product_category_id is zero". PHP_EOL;
+                echo "$new_product_category_id is zero" . PHP_EOL;
             }
 
             $product_category_id["to_db"] = $new_product_category_id;
         } else {
-            $product_category_id["to_db"] =  $to_db_result[0]["product_category_id"];
+            $product_category_id["to_db"] = $to_db_result[0]["product_category_id"];
         }
 
-        $product_category_id["from_db"] =  $resultRow["product_category_id"];
+        $product_category_id["from_db"] = $resultRow["product_category_id"];
         $product_category_ids[] = $product_category_id;
     }
 
@@ -256,7 +258,7 @@ function move_business_info($businessID, $from_db, $to_db) {
         $product_price = $resultRow['price'];
         $product_short_description = $resultRow['short_description'];
         $product_availability_status = $resultRow['availability_status'];
-        $product_name =  $conn->real_escape_string($product_name);
+        $product_name = $conn->real_escape_string($product_name);
 
         //for insert
         $product_long_description = $resultRow['long_description'];
@@ -269,7 +271,7 @@ function move_business_info($businessID, $from_db, $to_db) {
         $product_has_option = $resultRow['has_option'];
 
         $new_product_category_id = get_new_foreign_key($resultRow["product_category_id"]
-            ,$product_category_ids, "from_db", "to_db");
+            , $product_category_ids, "from_db", "to_db");
 
         $select_product_query = "SELECT * from $to_db.`product`
         where `businessID` = $new_business_id and `name` = '$product_name' and `product_category_id` = '$new_product_category_id'
@@ -289,16 +291,16 @@ function move_business_info($businessID, $from_db, $to_db) {
             $conn->query($insert_query);
             $new_product_id = mysqli_insert_id($conn);
             if ($new_product_id == 0) {
-                echo "Error in processing Products.  Something went wrong with $new_product_id". PHP_EOL;
+                echo "Error in processing Products.  Something went wrong with $new_product_id" . PHP_EOL;
             }
 
 
             $product_id["to_db"] = $new_product_id;
         } else {
-            $product_id["to_db"] =  $to_db_result[0]["product_id"];
+            $product_id["to_db"] = $to_db_result[0]["product_id"];
         }
 
-        $product_id["from_db"] =  $resultRow["product_id"];
+        $product_id["from_db"] = $resultRow["product_id"];
         $product_ids[] = $product_id;
 
     }
@@ -315,18 +317,18 @@ function move_business_info($businessID, $from_db, $to_db) {
         $product_option_price = $resultRow['price'];
         $product_option_description = $resultRow['description'];
         $product_option_availability_status = $resultRow['availability_status'];
-        $product_option_name =  $conn->real_escape_string($product_option_name);
-        $product_option_description =  $conn->real_escape_string($product_option_description);
+        $product_option_name = $conn->real_escape_string($product_option_name);
+        $product_option_description = $conn->real_escape_string($product_option_description);
 
         $new_product_option_category_id = get_new_foreign_key($resultRow["product_option_category_id"]
-            ,$product_option_category_ids, "from_db", "to_db");
+            , $product_option_category_ids, "from_db", "to_db");
         $new_product_id = get_new_foreign_key($resultRow["product_id"]
-            ,$product_ids, "from_db", "to_db");
+            , $product_ids, "from_db", "to_db");
         $new_option_id = get_new_foreign_key($resultRow["option_id"]
-            ,$option_ids, "from_db", "to_db");
+            , $option_ids, "from_db", "to_db");
 
-        if ( $new_product_option_category_id == 0 || $new_product_id == 0 || $new_option_id == 0 ) {
-            echo  "Wrong!". PHP_EOL;
+        if ($new_product_option_category_id == 0 || $new_product_id == 0 || $new_option_id == 0) {
+            echo "Wrong!" . PHP_EOL;
         }
 
         $select_to_product_option_query = "SELECT * from $to_db.`product_option`
@@ -348,20 +350,20 @@ function move_business_info($businessID, $from_db, $to_db) {
             $new_product_option_id = mysqli_insert_id($conn);
 
             if ($new_product_option_id == 0) {
-                echo  "Wrong - new option id is 0!". PHP_EOL;
+                echo "Wrong - new option id is 0!" . PHP_EOL;
             }
 
             $product_option_id["to_db"] = $new_product_option_id;
         } else {
-                $to_db_product_option_id = $to_db_result[0]["product_option_id"];
-                $update_query = "update $to_db.`product_option` set `product_option_category_id` = '$new_product_option_category_id'
+            $to_db_product_option_id = $to_db_result[0]["product_option_id"];
+            $update_query = "update $to_db.`product_option` set `product_option_category_id` = '$new_product_option_category_id'
                   ,`option_id` = '$new_option_id'
                   ,`product_id` = '$new_product_id' where `product_option_id` = '$to_db_product_option_id';";
-                $conn->query($update_query);
-                $product_option_id["to_db"] =  $to_db_product_option_id;
+            $conn->query($update_query);
+            $product_option_id["to_db"] = $to_db_product_option_id;
         }
 
-        $product_option_id["from_db"] =  $resultRow["product_option_id"];
+        $product_option_id["from_db"] = $resultRow["product_option_id"];
         $product_option_ids[] = $product_option_id;
 
     }
@@ -379,29 +381,16 @@ $return_result = array();
 header('Content-type: application/json');
 
 // process loop
-$cmdCounter = 0;
-do {
-    switch ($cmdCounter) {
+switch ($cmd) {
+    case 'calc_pickup_cutoff_dates':
+        $int_weekday = filter_input(INPUT_GET, 'week_day_no');
+        $no_days = filter_input(INPUT_GET, 'no_days_before_market_day');
+        $dateArr = calc_pickup_cutoff_date( $int_weekday, $no_days);
+        echo json_encode($dateArr);
 
-        case 0:
-            $pos = stripos($cmd, "move_business_info");
-            if ($pos !== false) {
-                $businessID = filter_input(INPUT_GET, 'businessID');
-                $from_db = filter_input(INPUT_GET, 'from_db');
-                $to_db = filter_input(INPUT_GET, 'to_db');
-                $return_result = move_business_info($businessID, $from_db, $to_db);
-                $final_result["message"] = "";
-                $final_result["status"] = 0;
-                $final_result["data"] = $return_result;
-                echo json_encode($final_result);
+        break;
 
-                break 2;
-            }
-
-        default:
-            break 2;
-    } // switch
-
-    $cmdCounter++;
-} while ($cmdCounter < 23) ;
+    default:
+        break;
+} // switch
 ?>
